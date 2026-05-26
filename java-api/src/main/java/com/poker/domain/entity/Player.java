@@ -57,6 +57,26 @@ public class Player {
     public void setPasswordHash(String passwordHash)  { this.passwordHash  = passwordHash; }
     public void setBankrollChips(int bankrollChips)   { this.bankrollChips = bankrollChips; }
 
+    /**
+     * Deducts {@code amount} chips from the bankroll.
+     *
+     * @throws IllegalArgumentException if {@code amount} exceeds the current bankroll
+     */
+    public void deductChips(int amount) {
+        if (amount > bankrollChips) {
+            throw new IllegalArgumentException(
+                "Cannot deduct " + amount + " chips; bankroll is only " + bankrollChips);
+        }
+        this.bankrollChips -= amount;
+    }
+
+    /**
+     * Credits {@code amount} chips back to the bankroll (cash-out or refund).
+     */
+    public void creditChips(int amount) {
+        this.bankrollChips += amount;
+    }
+
     @Override
     public String toString() {
         return "Player{id=" + id + ", username='" + username + "'}";
