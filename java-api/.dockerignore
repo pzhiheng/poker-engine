@@ -1,0 +1,13 @@
+# Keep the build context small — only what the Dockerfile actually needs.
+
+# Maven output (rebuilt inside Docker)
+target/
+
+# IDE and OS noise
+.idea/
+*.iml
+.DS_Store
+
+# Local test/config files that must not end up in the image
+src/test/
+*.env
