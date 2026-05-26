@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package poker.odds;
+
+option go_package = "github.com/poker/go-odds/proto;oddspb";
+option java_package = "com.poker.grpc";
+option java_outer_classname = "OddsProto";
+
+// ──────────────────────────────────────────────
+//  OddsService — called by java-api at flop/turn/river
+// ──────────────────────────────────────────────
+service OddsService {
+  // Exact or Monte Carlo equity for the current board state
+  rpc CalculateEquity (EquityRequest) returns (EquityResponse);
+  // Health probe (liveness)
+  rpc Ping (PingRequest) returns (PingResponse);
+}
+
+// ── Request ────────────────────────────────────
+message EquityRequest {
+  // The calling hand's ID (for tracing / logging)
+  string hand_id = 1;
+
+  // "FLOP" | "TURN" | "RIVER"
+  string street = 2;
+
+  // Each player still in the hand
+  repeated PlayerHand players = 3;
+
+  // Community cards dealt so far (3 on flop, 4 on turn, 5 on river)
+  repeated string board_cards = 4;
+
+  // If true, enumerate all remaining combos exactly; else run Monte Carlo
+  bool exact = 5;
+
+  // Monte Carlo trials (ignored when exact=true); 0 → server default (50 000)
+  int32 trials = 6;
+}
+
+message PlayerHand {
+  int32 seat = 1;
+  // Exactly two hole cards, e.g. ["Ah", "Kd"]
+  repeated string hole_cards = 2;
+}
+
+// ── Response ───────────────────────────────────
+message EquityResponse {
+  string hand_id = 1;
+  repeated SeatEquity equities = 2;
+  // Actual trials run (same as request.trials for MC, or exact combos count)
+  int32 trials_run = 3;
+  // Computation duration in milliseconds
+  int64 duration_ms = 4;
+}
+
+message SeatEquity {
+  int32 seat = 1;
+  double win_pct = 2;
+  double tie_pct = 3;
+  double lose_pct = 4;
+}
+
+// ── Ping ───────────────────────────────────────
+message PingRequest {}
+message PingResponse {
+  string status = 1; // "ok"
+}
