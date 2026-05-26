@@ -4,16 +4,20 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.poker.domain.model.TableStatus;
 import com.poker.exception.BusinessRuleException;
 import com.poker.exception.ResourceNotFoundException;
+import com.poker.security.JwtAuthFilter;
+import com.poker.security.JwtService;
 import com.poker.service.TableService;
 import com.poker.web.dto.CreateTableRequest;
 import com.poker.web.dto.JoinSeatRequest;
 import com.poker.web.dto.SeatResponse;
 import com.poker.web.dto.TableDetailResponse;
 import com.poker.web.dto.TableResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -39,14 +43,25 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(TableController.class)
 @Import({
     com.poker.config.SecurityConfig.class,
-    com.poker.web.advice.GlobalExceptionHandler.class
+    com.poker.web.advice.GlobalExceptionHandler.class,
+    JwtAuthFilter.class,
+    JwtService.class
 })
 class TableControllerTest {
 
     @Autowired MockMvc        mockMvc;
     @Autowired ObjectMapper   objectMapper;
+    @Autowired JwtService     jwtService;
 
     @MockitoBean TableService tableService;
+
+    /** Signed bearer token used by the write-path tests. */
+    private String bearerToken;
+
+    @BeforeEach
+    void generateToken() {
+        bearerToken = "Bearer " + jwtService.generateToken(UUID.randomUUID(), "testuser");
+    }
 
     // ── GET /tables ───────────────────────────────────────────────────────────
 
@@ -125,6 +140,7 @@ class TableControllerTest {
         when(tableService.createTable(any(CreateTableRequest.class))).thenReturn(resp);
 
         mockMvc.perform(post("/tables")
+                .header(HttpHeaders.AUTHORIZATION, bearerToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"name":"Main Table","smallBlind":5,"bigBlind":10}
@@ -140,6 +156,7 @@ class TableControllerTest {
     @Test
     void createTable_missingName_returns400() throws Exception {
         mockMvc.perform(post("/tables")
+                .header(HttpHeaders.AUTHORIZATION, bearerToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"name":"","smallBlind":5,"bigBlind":10}
@@ -154,6 +171,7 @@ class TableControllerTest {
             .thenThrow(new BusinessRuleException("TABLE_NAME_TAKEN", "already exists"));
 
         mockMvc.perform(post("/tables")
+                .header(HttpHeaders.AUTHORIZATION, bearerToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"name":"Taken","smallBlind":5,"bigBlind":10}
@@ -168,6 +186,7 @@ class TableControllerTest {
             .thenThrow(new IllegalArgumentException("bigBlind must be 2x smallBlind"));
 
         mockMvc.perform(post("/tables")
+                .header(HttpHeaders.AUTHORIZATION, bearerToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"name":"Bad","smallBlind":5,"bigBlind":11}
@@ -188,6 +207,7 @@ class TableControllerTest {
         when(tableService.joinSeat(eq(tableId), any(JoinSeatRequest.class))).thenReturn(resp);
 
         mockMvc.perform(post("/tables/{id}/seats", tableId)
+                .header(HttpHeaders.AUTHORIZATION, bearerToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"playerId":"%s","seatNo":1,"buyIn":500}
@@ -205,6 +225,7 @@ class TableControllerTest {
         UUID playerId = UUID.randomUUID();
 
         mockMvc.perform(post("/tables/{id}/seats", tableId)
+                .header(HttpHeaders.AUTHORIZATION, bearerToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"playerId":"%s","seatNo":7,"buyIn":500}
@@ -222,6 +243,7 @@ class TableControllerTest {
             .thenThrow(new ResourceNotFoundException("Table not found"));
 
         mockMvc.perform(post("/tables/{id}/seats", tableId)
+                .header(HttpHeaders.AUTHORIZATION, bearerToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"playerId":"%s","seatNo":1,"buyIn":500}
@@ -239,6 +261,7 @@ class TableControllerTest {
             .thenThrow(new BusinessRuleException("SEAT_OCCUPIED", "Seat 1 is taken"));
 
         mockMvc.perform(post("/tables/{id}/seats", tableId)
+                .header(HttpHeaders.AUTHORIZATION, bearerToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"playerId":"%s","seatNo":1,"buyIn":500}

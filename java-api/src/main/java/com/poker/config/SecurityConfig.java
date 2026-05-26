@@ -1,7 +1,11 @@
 package com.poker.config;
 
+import com.poker.security.JwtAuthFilter;
+import com.poker.security.JwtProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -9,54 +13,49 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * Security configuration — stateless REST API baseline.
+ * Spring Security configuration — stateless JWT bearer token auth.
  *
- * <p>Phase 1 (this file): no JWT yet; all endpoints are open so that
- * Day 5 table endpoints can be exercised without auth headers.
- *
- * <p>Phase 2 (Day 7): add {@code JwtAuthenticationFilter}, restrict
- * everything except {@code /auth/**} and the Actuator health/metrics paths.
- *
- * <p>Design notes:
+ * <p>Access rules:
  * <ul>
- *   <li>CSRF is disabled — the API is stateless; there are no session cookies
- *       to cross-site-request-forge.</li>
- *   <li>Session creation is set to STATELESS — Spring Security must not
- *       create or use an HTTP session.</li>
- *   <li>{@link PasswordEncoder} is declared here so it can be injected by
- *       any service without a circular dependency on the auth layer.</li>
+ *   <li>{@code POST /auth/**}           — public (register + login)</li>
+ *   <li>{@code GET  /tables/**}         — public (browse tables without logging in)</li>
+ *   <li>{@code GET  /actuator/**}       — public (health + metrics)</li>
+ *   <li>Everything else                 — requires {@code ROLE_PLAYER} (valid JWT)</li>
  * </ul>
+ *
+ * <p>CSRF is disabled — stateless JWTs carried in the {@code Authorization}
+ * header are immune to cross-site request forgery (no cookie is used).
  */
 @Configuration
 @EnableWebSecurity
+@EnableConfigurationProperties(JwtProperties.class)
 public class SecurityConfig {
+
+    private final JwtAuthFilter jwtAuthFilter;
+
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
+        this.jwtAuthFilter = jwtAuthFilter;
+    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            // ── No CSRF for a stateless REST API ─────────────────────────────
             .csrf(AbstractHttpConfigurer::disable)
-
-            // ── Stateless — never create a session ───────────────────────────
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-            // ── Authorization rules ───────────────────────────────────────────
-            // TODO (Day 7): narrow to .requestMatchers("/auth/**").permitAll()
-            //               .anyRequest().authenticated()
+            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .anyRequest().permitAll()
-            );
+                .requestMatchers("/auth/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/tables/**").permitAll()
+                .requestMatchers("/actuator/**").permitAll()
+                .anyRequest().hasRole("PLAYER")
+            )
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    /**
-     * BCrypt password encoder — used by the registration service to hash
-     * passwords before storage.  Strength 12 is the Spring Security default.
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
