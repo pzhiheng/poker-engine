@@ -8,6 +8,7 @@ import com.poker.service.TableService;
 import com.poker.web.dto.CreateTableRequest;
 import com.poker.web.dto.JoinSeatRequest;
 import com.poker.web.dto.SeatResponse;
+import com.poker.web.dto.TableDetailResponse;
 import com.poker.web.dto.TableResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,11 +18,14 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -43,6 +47,74 @@ class TableControllerTest {
     @Autowired ObjectMapper   objectMapper;
 
     @MockitoBean TableService tableService;
+
+    // ── GET /tables ───────────────────────────────────────────────────────────
+
+    @Test
+    void listTables_noFilter_returns200WithList() throws Exception {
+        UUID id = UUID.randomUUID();
+        TableResponse resp = new TableResponse(id, "Main Table", 5, 10, TableStatus.WAITING, 0);
+        when(tableService.listTables(null)).thenReturn(List.of(resp));
+
+        mockMvc.perform(get("/tables"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$").isArray())
+            .andExpect(jsonPath("$[0].id").value(id.toString()))
+            .andExpect(jsonPath("$[0].name").value("Main Table"));
+    }
+
+    @Test
+    void listTables_withStatusFilter_returns200() throws Exception {
+        UUID id = UUID.randomUUID();
+        TableResponse resp = new TableResponse(id, "Open Table", 5, 10, TableStatus.WAITING, 1);
+        when(tableService.listTables(TableStatus.WAITING)).thenReturn(List.of(resp));
+
+        mockMvc.perform(get("/tables").param("status", "WAITING"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].status").value("WAITING"));
+    }
+
+    @Test
+    void listTables_emptyResult_returns200WithEmptyArray() throws Exception {
+        when(tableService.listTables(isNull())).thenReturn(List.of());
+
+        mockMvc.perform(get("/tables"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$").isArray())
+            .andExpect(jsonPath("$").isEmpty());
+    }
+
+    // ── GET /tables/{id} ──────────────────────────────────────────────────────
+
+    @Test
+    void getTable_found_returns200WithSeats() throws Exception {
+        UUID tableId  = UUID.randomUUID();
+        UUID seatId   = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+
+        SeatResponse seat = new SeatResponse(seatId, tableId, playerId, 1, 500, false);
+        TableDetailResponse detail = new TableDetailResponse(
+            tableId, "Main Table", 5, 10, TableStatus.WAITING, List.of(seat));
+        when(tableService.getTable(tableId)).thenReturn(detail);
+
+        mockMvc.perform(get("/tables/{id}", tableId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(tableId.toString()))
+            .andExpect(jsonPath("$.seats").isArray())
+            .andExpect(jsonPath("$.seats[0].seatNo").value(1))
+            .andExpect(jsonPath("$.seats[0].stackChips").value(500));
+    }
+
+    @Test
+    void getTable_notFound_returns404() throws Exception {
+        UUID tableId = UUID.randomUUID();
+        when(tableService.getTable(tableId))
+            .thenThrow(new ResourceNotFoundException("Table not found: " + tableId));
+
+        mockMvc.perform(get("/tables/{id}", tableId))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+    }
 
     // ── POST /tables ──────────────────────────────────────────────────────────
 

@@ -12,6 +12,7 @@ import com.poker.exception.ResourceNotFoundException;
 import com.poker.web.dto.CreateTableRequest;
 import com.poker.web.dto.JoinSeatRequest;
 import com.poker.web.dto.SeatResponse;
+import com.poker.web.dto.TableDetailResponse;
 import com.poker.web.dto.TableResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -63,6 +65,62 @@ class TableServiceTest {
         var pIdField = Player.class.getDeclaredField("id");
         pIdField.setAccessible(true);
         pIdField.set(player, playerId);
+    }
+
+    // ── listTables ────────────────────────────────────────────────────────────
+
+    @Test
+    void listTables_noFilter_returnsAll() {
+        when(tableRepo.findAll()).thenReturn(List.of(savedTable));
+
+        List<TableResponse> result = service.listTables(null);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).name()).isEqualTo("Main Table");
+        verify(tableRepo).findAll();
+        verify(tableRepo, never()).findByStatus(any());
+    }
+
+    @Test
+    void listTables_withStatusFilter_delegatesToRepo() {
+        when(tableRepo.findByStatus(TableStatus.WAITING)).thenReturn(List.of(savedTable));
+
+        List<TableResponse> result = service.listTables(TableStatus.WAITING);
+
+        assertThat(result).hasSize(1);
+        verify(tableRepo).findByStatus(TableStatus.WAITING);
+        verify(tableRepo, never()).findAll();
+    }
+
+    @Test
+    void listTables_noMatch_returnsEmptyList() {
+        when(tableRepo.findByStatus(TableStatus.CLOSED)).thenReturn(List.of());
+
+        List<TableResponse> result = service.listTables(TableStatus.CLOSED);
+
+        assertThat(result).isEmpty();
+    }
+
+    // ── getTable ──────────────────────────────────────────────────────────────
+
+    @Test
+    void getTable_found_returnsDetail() {
+        when(tableRepo.findById(tableId)).thenReturn(Optional.of(savedTable));
+
+        TableDetailResponse detail = service.getTable(tableId);
+
+        assertThat(detail.id()).isEqualTo(tableId);
+        assertThat(detail.name()).isEqualTo("Main Table");
+        assertThat(detail.seats()).isEmpty(); // no seats added in setUp
+    }
+
+    @Test
+    void getTable_notFound_throws404() {
+        when(tableRepo.findById(tableId)).thenReturn(Optional.empty());
+
+        assertThatExceptionOfType(ResourceNotFoundException.class)
+            .isThrownBy(() -> service.getTable(tableId))
+            .withMessageContaining(tableId.toString());
     }
 
     // ── createTable ───────────────────────────────────────────────────────────

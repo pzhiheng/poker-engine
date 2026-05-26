@@ -8,13 +8,16 @@ import com.poker.domain.repository.PokerTableRepository;
 import com.poker.domain.repository.TableSeatRepository;
 import com.poker.exception.BusinessRuleException;
 import com.poker.exception.ResourceNotFoundException;
+import com.poker.domain.model.TableStatus;
 import com.poker.web.dto.CreateTableRequest;
 import com.poker.web.dto.JoinSeatRequest;
 import com.poker.web.dto.SeatResponse;
+import com.poker.web.dto.TableDetailResponse;
 import com.poker.web.dto.TableResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -37,6 +40,39 @@ public class TableService {
         this.tableRepo  = tableRepo;
         this.seatRepo   = seatRepo;
         this.playerRepo = playerRepo;
+    }
+
+    // ── List tables ───────────────────────────────────────────────────────────
+
+    /**
+     * Returns all tables, optionally filtered by status.
+     *
+     * @param status when non-null, only tables with this status are returned
+     * @return list of table summaries (no seats included)
+     */
+    @Transactional(readOnly = true)
+    public List<TableResponse> listTables(TableStatus status) {
+        List<PokerTable> tables = status != null
+            ? tableRepo.findByStatus(status)
+            : tableRepo.findAll();
+        return tables.stream().map(TableResponse::from).toList();
+    }
+
+    // ── Get single table ──────────────────────────────────────────────────────
+
+    /**
+     * Returns full detail for a single table, including all seats.
+     *
+     * @param tableId UUID of the requested table
+     * @return table detail with seat list
+     * @throws ResourceNotFoundException if no table with that id exists
+     */
+    @Transactional(readOnly = true)
+    public TableDetailResponse getTable(UUID tableId) {
+        PokerTable table = tableRepo.findById(tableId)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Table not found: " + tableId));
+        return TableDetailResponse.from(table);
     }
 
     // ── Create table ──────────────────────────────────────────────────────────
