@@ -45,7 +45,7 @@ CREATE TABLE table_seats (
     id          UUID      NOT NULL DEFAULT gen_random_uuid(),
     table_id    UUID      NOT NULL,
     player_id   UUID,                        -- NULL = empty seat
-    seat_no     SMALLINT  NOT NULL,
+    seat_no     INT       NOT NULL,
     stack_chips INT       NOT NULL DEFAULT 0,
     sitting_out BOOLEAN   NOT NULL DEFAULT FALSE,
 
@@ -61,7 +61,7 @@ CREATE TABLE table_seats (
 CREATE TABLE hands (
     id          UUID        NOT NULL DEFAULT gen_random_uuid(),
     table_id    UUID        NOT NULL,
-    dealer_seat SMALLINT    NOT NULL,
+    dealer_seat INT         NOT NULL,
     street      VARCHAR(20) NOT NULL DEFAULT 'PREFLOP',
     status      VARCHAR(20) NOT NULL DEFAULT 'WAITING',
     pot_chips   INT         NOT NULL DEFAULT 0,

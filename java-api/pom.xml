@@ -68,6 +68,12 @@
 			<artifactId>postgresql</artifactId>
 			<scope>runtime</scope>
 		</dependency>
+		<!-- Prometheus metrics endpoint (/actuator/prometheus) -->
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-registry-prometheus</artifactId>
+		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
@@ -76,6 +82,23 @@
 		<dependency>
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- Testcontainers — integration tests spin up a real Postgres -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-testcontainers</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>junit-jupiter</artifactId>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
@@ -88,5 +111,48 @@
 			</plugin>
 		</plugins>
 	</build>
+
+	<profiles>
+		<!--
+			Auto-activated when Colima is running on macOS.
+			Sets DOCKER_HOST so Testcontainers finds the Colima socket
+			instead of looking at the default /var/run/docker.sock.
+			On Linux CI the socket does not exist, so this profile is skipped
+			and Docker's standard socket is used automatically.
+		-->
+		<profile>
+			<id>colima</id>
+			<activation>
+				<file>
+					<exists>${user.home}/.colima/default/docker.sock</exists>
+				</file>
+			</activation>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-surefire-plugin</artifactId>
+						<configuration>
+							<environmentVariables>
+								<!-- DOCKER_HOST → used by EnvironmentAndSystemPropertyClientProviderStrategy -->
+								<DOCKER_HOST>unix://${user.home}/.colima/default/docker.sock</DOCKER_HOST>
+								<!-- Ryuk mounts the Docker socket into itself; on macOS+Colima the
+								     socket is a host path that can't be bind-mounted into the Linux VM -->
+								<TESTCONTAINERS_RYUK_DISABLED>true</TESTCONTAINERS_RYUK_DISABLED>
+							</environmentVariables>
+							<systemPropertyVariables>
+								<!--
+									docker-java's createDefaultConfigBuilder reads api.version from
+									System.getProperties() last (highest precedence). Docker Engine 29.x
+									dropped support below 1.44; without this override it defaults to 1.32.
+								-->
+								<api.version>1.44</api.version>
+							</systemPropertyVariables>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 
 </project>

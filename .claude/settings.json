@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker info *)",
+      "Bash(docker context *)",
+      "Read(//Users/pzhiheng/.colima/default/**)",
+      "Bash(cat)",
+      "Read(//Users/pzhiheng/**)",
+      "Bash(sudo ln -sf ~/.colima/default/docker.sock /var/run/docker.sock)",
+      "Read(//var/run/**)",
+      "Read(//private/tmp/**)",
+      "Bash(jar xf *)",
+      "Bash(javap -p -c org/testcontainers/junit/jupiter/TestcontainersExtension.class)"
+    ]
+  }
+}
