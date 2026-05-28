@@ -65,17 +65,19 @@ Full scope definition: see [`ASSUMPTIONS.md`](ASSUMPTIONS.md).
 | **6** ✅ | Read endpoints | `GET /tables` (with `?status` filter), `GET /tables/{id}` with seat list |
 | **7** ✅ | JWT auth | `POST /auth/register`, `POST /auth/login`, `JwtAuthFilter`, `SecurityConfig` locked down |
 
-### Week 2 — Poker core: hand lifecycle + WebSocket
+### Week 2 — Poker core + coaching analytics
+
+The platform is a **practice table with a built-in coach**: the engine records hands, and after every decision the system tells the player what the better action would have been and why. Long-term stats build a player profile with coaching suggestions. Imported hand histories from PokerStars/GGPoker also feed the stats.
 
 | Day | Focus | Deliverable |
 |-----|-------|-------------|
-| **8** | Hand lifecycle — start | `POST /tables/{id}/hands` — starts a hand, deals hole cards into a snapshot, enforces 2-6 seated players |
-| **9** | Action endpoint | `POST /hands/{id}/actions` — fold/check/call/bet/raise/all-in; server validates legality, records `HandAction` |
-| **10** | Showdown + settlement | Evaluate best 5-card hand, award pot via `PotResult`, advance `HandStatus` to FINISHED |
-| **11** | WebSocket setup | STOMP broker config, `/topic/tables/{id}` destination, connect/subscribe endpoints |
-| **12** | Real-time broadcast | Broadcast `TableStateEvent` after every action; `HandSnapshot` written at each street |
-| **13** | Player profile | `GET /me`, `GET /players/{id}` — bankroll, seat history; `PATCH /me` update display name |
-| **14** | Java integration tests | `@SpringBootTest` full hand flow tests: deal → action loop → showdown → bankroll settled |
+| **8** | Hand lifecycle — start | `POST /tables/{id}/hands` — starts a hand, deals hole cards into a `HandSnapshot`, enforces 2–6 seated players |
+| **9** | Action endpoint + live feedback | `POST /hands/{id}/actions` — records action, returns `ActionFeedback` (equity, pot odds, recommended action, explanation) |
+| **10** | Stats service | `StatsComputationService` computes VPIP/PFR/aggression from `HandAction` history; `GET /players/{id}/stats` |
+| **11** | Player profile + coaching | `PlayerProfileService` classifies player type (TAG/LAG/NIT/etc.) + rule-based coaching suggestions; `GET /players/{id}/profile` |
+| **12** | PokerStars import | `PokerStarsParser`, `HandImportService`, `POST /import/hands` multipart upload |
+| **13** | GGPoker import + V2 migration | `GGPokerParser`, `V2__analytics.sql` (source column + hand_imports table), import status endpoint |
+| **14** | Tests | Parser unit tests, stats computation tests, profile tests, `FlywayMigrationTest` for V2 |
 
 ### Week 3 — Go odds service + gRPC + observability
 
