@@ -290,11 +290,12 @@ public class HandService {
             nextActionSeat = nextActiveSeat(updatedSeats, actingSeat.seatNo());
         }
 
-        // 8. Persist HandAction
+        // 8. Persist HandAction (with street for stats computation)
         int nextVersion = latestSnapshot.getVersionNo() + 1;
+        Street actionStreet = Street.valueOf(before.street());
         Player player = playerRepo.findById(requestingPlayerId)
             .orElseThrow(() -> new ResourceNotFoundException("Player not found: " + requestingPlayerId));
-        actionRepo.save(new HandAction(hand, player, req.actionType(), chipsCommitted, nextVersion));
+        actionRepo.save(new HandAction(hand, player, req.actionType(), chipsCommitted, nextVersion, actionStreet));
 
         // 9. Persist new snapshot
         SnapshotPayload after = new SnapshotPayload(

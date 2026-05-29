@@ -48,6 +48,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/tables/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/players/**").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 .anyRequest().hasRole("PLAYER")
             )

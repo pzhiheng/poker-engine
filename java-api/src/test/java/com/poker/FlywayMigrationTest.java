@@ -52,7 +52,8 @@ class FlywayMigrationTest {
     @ParameterizedTest(name = "table ''{0}'' exists")
     @ValueSource(strings = {
         "players", "tables", "table_seats",
-        "hands", "hand_actions", "hand_snapshots", "pot_results"
+        "hands", "hand_actions", "hand_snapshots", "pot_results",
+        "hand_imports"
     })
     void allTablesExist(String tableName) {
         Integer count = jdbc.queryForObject(
@@ -65,11 +66,11 @@ class FlywayMigrationTest {
     // ── Flyway bookkeeping ──────────────────────────────────────────────────
 
     @Test
-    void onlyOneFlywayMigrationApplied() {
+    void twoFlywayMigrationsApplied() {
         Integer count = jdbc.queryForObject(
             "SELECT COUNT(*) FROM flyway_schema_history WHERE success = true",
             Integer.class);
-        assertEquals(1, count, "Expected exactly V1 in flyway_schema_history");
+        assertEquals(2, count, "Expected V1 and V2 in flyway_schema_history");
     }
 
     @Test
@@ -78,6 +79,14 @@ class FlywayMigrationTest {
             "SELECT description FROM flyway_schema_history WHERE version = '1'",
             String.class);
         assertEquals("init", description);
+    }
+
+    @Test
+    void flywayV2HasCorrectDescription() {
+        String description = jdbc.queryForObject(
+            "SELECT description FROM flyway_schema_history WHERE version = '2'",
+            String.class);
+        assertEquals("analytics", description);
     }
 
     // ── Column presence spot-checks ─────────────────────────────────────────
@@ -92,6 +101,54 @@ class FlywayMigrationTest {
     void handsTableHasExpectedColumns() {
         assertColumnsExist("hands",
             "id", "table_id", "dealer_seat", "street", "status", "pot_chips", "started_at");
+    }
+
+    // ── V2 schema checks ────────────────────────────────────────────────────
+
+    @Test
+    void handActionsHasStreetColumn() {
+        assertColumnsExist("hand_actions", "street");
+    }
+
+    @Test
+    void handsHasSourceColumn() {
+        assertColumnsExist("hands", "source");
+    }
+
+    @Test
+    void handImportsHasExpectedColumns() {
+        assertColumnsExist("hand_imports",
+            "id", "player_id", "filename", "source",
+            "hands_parsed", "hands_imported", "status", "error_message", "imported_at");
+    }
+
+    @Test
+    void handImportsRejectsUnknownSource() {
+        // Need a real player row for the FK
+        jdbc.update("INSERT INTO players(username, password_hash, bankroll_chips) "
+                    + "VALUES ('v2test', 'x', 1000)");
+        String playerId = jdbc.queryForObject(
+            "SELECT id::text FROM players WHERE username = 'v2test'", String.class);
+
+        assertThrows(Exception.class, () ->
+            jdbc.update(
+                "INSERT INTO hand_imports(player_id, filename, source) "
+                + "VALUES (?::uuid, 'file.txt', 'UNKNOWN')", playerId),
+            "source = 'UNKNOWN' should be rejected by check constraint on hand_imports");
+    }
+
+    @Test
+    void handsRejectsUnknownSource() {
+        jdbc.update("INSERT INTO tables(name, small_blind, big_blind, status) "
+                    + "VALUES ('v2tmp', 1, 2, 'WAITING')");
+        String tableId = jdbc.queryForObject(
+            "SELECT id::text FROM tables WHERE name = 'v2tmp'", String.class);
+
+        assertThrows(Exception.class, () ->
+            jdbc.update(
+                "INSERT INTO hands(table_id, dealer_seat, street, status, source) "
+                + "VALUES (?::uuid, 1, 'PREFLOP', 'IN_PROGRESS', 'INVALID')", tableId),
+            "source = 'INVALID' should be rejected by chk_hands_source");
     }
 
     @Test
@@ -137,7 +194,8 @@ class FlywayMigrationTest {
         "idx_hand_actions_order",
         "idx_hand_snapshots_hand",
         "idx_hand_snapshots_ver",
-        "idx_pot_results_hand"
+        "idx_pot_results_hand",
+        "idx_hand_imports_player"
     })
     void indexExists(String indexName) {
         Integer count = jdbc.queryForObject(
