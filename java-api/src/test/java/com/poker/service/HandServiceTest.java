@@ -9,8 +9,10 @@ import com.poker.domain.entity.TableSeat;
 import com.poker.domain.model.Card;
 import com.poker.domain.model.HandStatus;
 import com.poker.domain.model.TableStatus;
+import com.poker.domain.repository.HandActionRepository;
 import com.poker.domain.repository.HandRepository;
 import com.poker.domain.repository.HandSnapshotRepository;
+import com.poker.domain.repository.PlayerRepository;
 import com.poker.domain.repository.PokerTableRepository;
 import com.poker.domain.repository.TableSeatRepository;
 import com.poker.exception.BusinessRuleException;
@@ -44,11 +46,14 @@ import static org.mockito.Mockito.*;
 @MockitoSettings(strictness = Strictness.LENIENT)
 class HandServiceTest {
 
-    @Mock PokerTableRepository   tableRepo;
-    @Mock TableSeatRepository    seatRepo;
-    @Mock HandRepository         handRepo;
-    @Mock HandSnapshotRepository snapshotRepo;
-    @Mock DeckService            deckService;
+    @Mock PokerTableRepository    tableRepo;
+    @Mock TableSeatRepository     seatRepo;
+    @Mock HandRepository          handRepo;
+    @Mock HandSnapshotRepository  snapshotRepo;
+    @Mock HandActionRepository    actionRepo;
+    @Mock PlayerRepository        playerRepo;
+    @Mock DeckService             deckService;
+    @Mock DecisionEvaluatorService evaluator;
 
     // Real ObjectMapper for JSON serialisation in snapshots
     final ObjectMapper objectMapper = new ObjectMapper();
@@ -70,7 +75,8 @@ class HandServiceTest {
     @BeforeEach
     void setUp() throws Exception {
         service = new HandService(
-            tableRepo, seatRepo, handRepo, snapshotRepo, deckService, objectMapper);
+            tableRepo, seatRepo, handRepo, snapshotRepo,
+            actionRepo, playerRepo, deckService, evaluator, objectMapper);
 
         tableId   = UUID.randomUUID();
         playerAId = UUID.randomUUID();

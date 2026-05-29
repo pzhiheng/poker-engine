@@ -1,11 +1,15 @@
 package com.poker.web.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.poker.domain.model.ActionFeedback;
+import com.poker.domain.model.ActionType;
+import com.poker.domain.model.FeedbackQuality;
 import com.poker.exception.BusinessRuleException;
 import com.poker.exception.ResourceNotFoundException;
 import com.poker.security.JwtAuthFilter;
 import com.poker.security.JwtService;
 import com.poker.service.HandService;
+import com.poker.web.dto.ActionResponse;
 import com.poker.web.dto.HandResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -140,5 +145,100 @@ class HandControllerTest {
                 .header(HttpHeaders.AUTHORIZATION, bearerToken))
             .andExpect(status().isUnprocessableEntity())
             .andExpect(jsonPath("$.code").value("INSUFFICIENT_PLAYERS"));
+    }
+
+    // ── POST /hands/{id}/actions ──────────────────────────────────────────────
+
+    @Test
+    void recordAction_returns200WithFeedback() throws Exception {
+        UUID handId = UUID.randomUUID();
+
+        ActionFeedback feedback = new ActionFeedback(
+            ActionType.CALL, ActionType.RAISE, 0.62, 0.28,
+            FeedbackQuality.SUBOPTIMAL,
+            "You had 62% equity vs 28% pot odds — raising for value would be stronger.");
+
+        HandResponse.SeatView seatA = new HandResponse.SeatView(
+            1, playerId, "testuser", 490, List.of("Ah", "Kh"), false, false);
+        HandResponse.SeatView seatB = new HandResponse.SeatView(
+            2, UUID.randomUUID(), "bob", 480, List.of("**", "**"), false, false);
+
+        ActionResponse resp = new ActionResponse(
+            handId, 2, "PREFLOP", 30, 2, List.of(seatA, seatB), feedback);
+
+        when(handService.recordAction(eq(handId), any(UUID.class), any()))
+            .thenReturn(resp);
+
+        mockMvc.perform(post("/hands/{id}/actions", handId)
+                .header(HttpHeaders.AUTHORIZATION, bearerToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"actionType":"CALL","amount":10}
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.handId").value(handId.toString()))
+            .andExpect(jsonPath("$.actionOrder").value(2))
+            .andExpect(jsonPath("$.street").value("PREFLOP"))
+            .andExpect(jsonPath("$.potChips").value(30))
+            .andExpect(jsonPath("$.feedback.actionTaken").value("CALL"))
+            .andExpect(jsonPath("$.feedback.recommendedAction").value("RAISE"))
+            .andExpect(jsonPath("$.feedback.equity").value(0.62))
+            .andExpect(jsonPath("$.feedback.potOdds").value(0.28))
+            .andExpect(jsonPath("$.feedback.quality").value("SUBOPTIMAL"))
+            .andExpect(jsonPath("$.feedback.explanation").isString());
+    }
+
+    @Test
+    void recordAction_noToken_returns403() throws Exception {
+        mockMvc.perform(post("/hands/{id}/actions", UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"actionType":"FOLD","amount":0}
+                    """))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void recordAction_missingActionType_returns400() throws Exception {
+        mockMvc.perform(post("/hands/{id}/actions", UUID.randomUUID())
+                .header(HttpHeaders.AUTHORIZATION, bearerToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"amount":10}
+                    """))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void recordAction_notYourTurn_returns422() throws Exception {
+        UUID handId = UUID.randomUUID();
+        when(handService.recordAction(eq(handId), any(UUID.class), any()))
+            .thenThrow(new BusinessRuleException("NOT_YOUR_TURN", "not your turn"));
+
+        mockMvc.perform(post("/hands/{id}/actions", handId)
+                .header(HttpHeaders.AUTHORIZATION, bearerToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"actionType":"CALL","amount":10}
+                    """))
+            .andExpect(status().isUnprocessableEntity())
+            .andExpect(jsonPath("$.code").value("NOT_YOUR_TURN"));
+    }
+
+    @Test
+    void recordAction_cannotCheck_returns422() throws Exception {
+        UUID handId = UUID.randomUUID();
+        when(handService.recordAction(eq(handId), any(UUID.class), any()))
+            .thenThrow(new BusinessRuleException("CANNOT_CHECK", "bet to call"));
+
+        mockMvc.perform(post("/hands/{id}/actions", handId)
+                .header(HttpHeaders.AUTHORIZATION, bearerToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"actionType":"CHECK","amount":0}
+                    """))
+            .andExpect(status().isUnprocessableEntity())
+            .andExpect(jsonPath("$.code").value("CANNOT_CHECK"));
     }
 }

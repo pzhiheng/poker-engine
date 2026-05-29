@@ -10,13 +10,20 @@ import java.util.UUID;
  * persisted on its own.  Hole cards are stored in plain notation (e.g.
  * {@code ["Ah","Kd"]}) but are replaced with {@code ["**","**"]} when sent
  * to players who do not own the seat.
+ *
+ * <p>{@code streetContribution} tracks how many chips this seat has put into
+ * the pot during the current betting street.  It resets to 0 at the start of
+ * each new street.  It is used to compute {@code callAmount =
+ * currentBet - streetContribution} and therefore the pot odds the player faces.
  */
 public record SeatState(
         int          seatNo,
         UUID         playerId,
         String       username,
         int          stackChips,
-        List<String> holeCards,   // ["Ah","Kd"] — masked for opponents
+        List<String> holeCards,           // ["Ah","Kd"] — masked for opponents
         boolean      folded,
-        boolean      allIn
+        boolean      allIn,
+        int          streetContribution,  // chips put in this street (0 at street start)
+        boolean      hasActedThisStreet   // true once the player takes a voluntary action this street
 ) {}
