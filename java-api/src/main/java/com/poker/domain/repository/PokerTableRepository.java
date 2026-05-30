@@ -12,4 +12,6 @@ public interface PokerTableRepository extends JpaRepository<PokerTable, UUID> {
     List<PokerTable> findByStatus(TableStatus status);
 
     boolean existsByName(String name);
+
+    java.util.Optional<PokerTable> findByName(String name);
 }

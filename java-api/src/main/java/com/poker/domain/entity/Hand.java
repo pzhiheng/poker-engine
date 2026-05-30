@@ -1,5 +1,6 @@
 package com.poker.domain.entity;
 
+import com.poker.domain.model.HandSource;
 import com.poker.domain.model.HandStatus;
 import com.poker.domain.model.Street;
 import jakarta.persistence.*;
@@ -48,6 +49,14 @@ public class Hand {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private HandStatus status = HandStatus.WAITING;
+
+    /**
+     * Where this hand originated — live system play or imported hand history.
+     * Defaults to {@link HandSource#SYSTEM} for all hands dealt on this platform.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source", nullable = false, length = 20)
+    private HandSource source = HandSource.SYSTEM;
 
     /** Total chips currently in the main pot + any side pots combined. */
     @Column(name = "pot_chips", nullable = false)
@@ -108,6 +117,7 @@ public class Hand {
     public int              getDealerSeat()  { return dealerSeat; }
     public Street           getStreet()      { return street; }
     public HandStatus       getStatus()      { return status; }
+    public HandSource       getSource()      { return source; }
     public int              getPotChips()    { return potChips; }
     public Instant          getStartedAt()   { return startedAt; }
     public List<HandAction>   getActions()   { return actions; }
@@ -117,6 +127,7 @@ public class Hand {
     // ── Mutators ──────────────────────────────────────────────────────────────
     public void setStreet(Street street)         { this.street   = street; }
     public void setStatus(HandStatus status)     { this.status   = status; }
+    public void setSource(HandSource source)     { this.source   = source; }
     public void setPotChips(int potChips)        { this.potChips = potChips; }
     public void addToPot(int chips)              { this.potChips += chips; }
 
