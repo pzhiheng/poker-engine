@@ -160,6 +160,86 @@ class StatsComputationServiceTest {
         assertThat(stats.avgProfitPerHand()).isEqualTo(50.0);
     }
 
+    // ── 3-bet% ────────────────────────────────────────────────────────────────
+
+    @Test
+    void compute_threeBetPct_playerRaisesAfterOwnPriorRaise_counted() throws Exception {
+        // Simplified proxy: player has two preflop raises in the same hand at different
+        // action orders — second raise "sees" a prior raise → qualifies as 3-bet hand.
+        HandAction raise1 = action(hand1, ActionType.RAISE, 20, Street.PREFLOP, 1);
+        HandAction raise2 = action(hand1, ActionType.RAISE, 60, Street.PREFLOP, 2);
+
+        when(handRepo.countHandsByPlayerAndStatus(playerId, HandStatus.FINISHED)).thenReturn(1L);
+        when(actionRepo.findAllByPlayerId(playerId)).thenReturn(List.of(raise1, raise2));
+
+        PlayerStats stats = service.compute(playerId);
+
+        assertThat(stats.threeBetPct()).isEqualTo(1.0);
+    }
+
+    @Test
+    void compute_threeBetPct_singlePreflopRaise_isZero() throws Exception {
+        HandAction raise = action(hand1, ActionType.RAISE, 20, Street.PREFLOP, 1);
+
+        when(handRepo.countHandsByPlayerAndStatus(playerId, HandStatus.FINISHED)).thenReturn(1L);
+        when(actionRepo.findAllByPlayerId(playerId)).thenReturn(List.of(raise));
+
+        PlayerStats stats = service.compute(playerId);
+
+        assertThat(stats.threeBetPct()).isEqualTo(0.0);
+    }
+
+    // ── WTSD% / W@SD% ────────────────────────────────────────────────────────
+
+    @Test
+    void compute_wtsdPct_sawFlopAndRiver_dividedBySawFlop() throws Exception {
+        // hand1: flop + river actions  → goes to showdown
+        // hand2: flop action only      → does not reach river
+        HandAction flopAct1  = action(hand1, ActionType.BET,   30, Street.FLOP,  1);
+        HandAction riverAct1 = action(hand1, ActionType.CHECK,  0, Street.RIVER, 2);
+        HandAction flopAct2  = action(hand2, ActionType.CHECK,  0, Street.FLOP,  1);
+
+        when(handRepo.countHandsByPlayerAndStatus(playerId, HandStatus.FINISHED)).thenReturn(2L);
+        when(actionRepo.findAllByPlayerId(playerId)).thenReturn(List.of(flopAct1, riverAct1, flopAct2));
+
+        PlayerStats stats = service.compute(playerId);
+
+        // sawFlop = 2, sawRiver = 1  →  wtsd = 0.5
+        assertThat(stats.wtsdPct()).isEqualTo(0.5);
+    }
+
+    @Test
+    void compute_wonAtSdPct_showdownWinsDividedByShowdownHands() throws Exception {
+        // hand1: player reaches the river and wins
+        HandAction flopAct  = action(hand1, ActionType.BET,   30, Street.FLOP,  1);
+        HandAction riverAct = action(hand1, ActionType.CHECK,  0, Street.RIVER, 2);
+
+        when(handRepo.countHandsByPlayerAndStatus(playerId, HandStatus.FINISHED)).thenReturn(1L);
+        when(actionRepo.findAllByPlayerId(playerId)).thenReturn(List.of(flopAct, riverAct));
+        when(potRepo.countDistinctHandsWonByPlayerId(playerId)).thenReturn(1L);
+
+        PlayerStats stats = service.compute(playerId);
+
+        assertThat(stats.wtsdPct()).isEqualTo(1.0);
+        assertThat(stats.wonAtSdPct()).isEqualTo(1.0);
+    }
+
+    // ── VPIP deduplication ────────────────────────────────────────────────────
+
+    @Test
+    void compute_vpip_multipleCallsInSameHand_deduplicatedToOneHand() throws Exception {
+        // Two CALL actions in the same hand — deduplicated to one VPIP hand
+        HandAction call1 = action(hand1, ActionType.CALL, 30, Street.PREFLOP, 1);
+        HandAction call2 = action(hand1, ActionType.CALL, 30, Street.PREFLOP, 2);
+
+        when(handRepo.countHandsByPlayerAndStatus(playerId, HandStatus.FINISHED)).thenReturn(1L);
+        when(actionRepo.findAllByPlayerId(playerId)).thenReturn(List.of(call1, call2));
+
+        PlayerStats stats = service.compute(playerId);
+
+        assertThat(stats.vpip()).isEqualTo(1.0); // 1 unique VPIP hand, not 2
+    }
+
     // ── 404 on unknown player ────────────────────────────────────────────────
 
     @Test

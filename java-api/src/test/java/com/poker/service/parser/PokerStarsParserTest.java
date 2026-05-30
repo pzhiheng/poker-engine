@@ -82,6 +82,82 @@ class PokerStarsParserTest {
      */
     static final String TWO_HANDS = PREFLOP_HAND + "\n" + FLOP_TURN_HAND;
 
+    /**
+     * Hand where both players go all-in pre-flop.
+     * Tests {@code ActionType.ALL_IN} detection via the "and is all-in" suffix.
+     */
+    static final String ALLIN_HAND = """
+        PokerStars Hand #333333333:  Hold'em No Limit (15/30) - 2024/03/01 10:10:00 ET
+        Table 'TestTable 6-max' 6-max Seat #1 is the button
+        Seat 1: alice (100 in chips)\s
+        Seat 2: bob (200 in chips)\s
+        alice: posts small blind 15
+        bob: posts big blind 30
+        *** HOLE CARDS ***
+        Dealt to alice [Ah Kd]
+        alice: raises 70 to 100 and is all-in
+        bob: calls 70 and is all-in
+        alice collected 200 from pot
+        *** SUMMARY ***
+        Total pot 200 | Rake 0\s
+        Seat 1: alice (button) (small blind) collected (200)
+        Seat 2: bob (big blind) lost
+        """;
+
+    /**
+     * Real-money hand ($0.25/$0.50) — stakes must be converted to cents (25/50).
+     */
+    static final String REAL_MONEY_HAND = """
+        PokerStars Hand #444444444:  Hold'em No Limit ($0.25/$0.50) - 2024/03/01 10:15:00 ET
+        Table 'RealMoneyTable 6-max' 6-max Seat #1 is the button
+        Seat 1: alice (50000 in chips)\s
+        Seat 2: bob (49000 in chips)\s
+        alice: posts small blind 25
+        bob: posts big blind 50
+        *** HOLE CARDS ***
+        Dealt to alice [Ah Kd]
+        alice: raises 125 to 175
+        bob: folds
+        Uncalled bet (125) returned to alice
+        alice collected 100 from pot
+        *** SUMMARY ***
+        Total pot 100 | Rake 0\s
+        Seat 1: alice (button) (small blind) collected (100)
+        Seat 2: bob (big blind) folded before Flop
+        """;
+
+    /**
+     * Full river hand — board must contain all five community cards.
+     */
+    static final String RIVER_HAND = """
+        PokerStars Hand #555555555:  Hold'em No Limit (15/30) - 2024/03/01 10:20:00 ET
+        Table 'TestTable 6-max' 6-max Seat #1 is the button
+        Seat 1: alice (1000 in chips)\s
+        Seat 2: bob (1000 in chips)\s
+        alice: posts small blind 15
+        bob: posts big blind 30
+        *** HOLE CARDS ***
+        Dealt to alice [8h 9h]
+        alice: calls 15
+        bob: checks
+        *** FLOP *** [7c Th Jd]
+        alice: bets 45
+        bob: calls 45
+        *** TURN *** [7c Th Jd] [2s]
+        alice: checks
+        bob: checks
+        *** RIVER *** [7c Th Jd 2s] [Ac]
+        alice: bets 90
+        bob: folds
+        Uncalled bet (90) returned to alice
+        alice collected 180 from pot
+        *** SUMMARY ***
+        Total pot 180 | Rake 0\s
+        Board [7c Th Jd 2s Ac]
+        Seat 1: alice (small blind) collected (180)
+        Seat 2: bob (big blind) folded on the River
+        """;
+
     @BeforeEach
     void setUp() {
         parser = new PokerStarsParser();
@@ -230,5 +306,65 @@ class PokerStarsParserTest {
         assertThat(AbstractHandHistoryParser.parseStake("0.01")).isEqualTo(1);
         assertThat(AbstractHandHistoryParser.parseStake("0.50")).isEqualTo(50);
         assertThat(AbstractHandHistoryParser.parseStake("$0.25")).isEqualTo(25);
+    }
+
+    // ── All-in actions ────────────────────────────────────────────────────────
+
+    @Test
+    void parse_allInRaise_parsedAsAllIn() {
+        // "alice: raises 70 to 100 and is all-in" → ALL_IN (not RAISE)
+        ParsedHand hand = parser.parse(ALLIN_HAND).get(0);
+
+        List<ParsedHand.ParsedAction> aliceActions = hand.actions().stream()
+            .filter(a -> a.username().equals("alice")).toList();
+
+        assertThat(aliceActions).hasSize(1);
+        assertThat(aliceActions.get(0).actionType()).isEqualTo(ActionType.ALL_IN);
+        assertThat(aliceActions.get(0).amount()).isEqualTo(100); // raise-to amount
+    }
+
+    @Test
+    void parse_allInCall_parsedAsAllIn() {
+        // "bob: calls 70 and is all-in" → ALL_IN (not CALL)
+        ParsedHand hand = parser.parse(ALLIN_HAND).get(0);
+
+        List<ParsedHand.ParsedAction> bobActions = hand.actions().stream()
+            .filter(a -> a.username().equals("bob")).toList();
+
+        assertThat(bobActions).hasSize(1);
+        assertThat(bobActions.get(0).actionType()).isEqualTo(ActionType.ALL_IN);
+    }
+
+    // ── Real-money stakes ─────────────────────────────────────────────────────
+
+    @Test
+    void parse_realMoneyHeader_stakesConvertedToCents() {
+        // $0.25/$0.50 → sb=25 cents, bb=50 cents
+        ParsedHand hand = parser.parse(REAL_MONEY_HAND).get(0);
+        assertThat(hand.smallBlind()).isEqualTo(25);
+        assertThat(hand.bigBlind()).isEqualTo(50);
+    }
+
+    // ── River board ───────────────────────────────────────────────────────────
+
+    @Test
+    void parse_riverHand_boardHasFiveCards() {
+        ParsedHand hand = parser.parse(RIVER_HAND).get(0);
+        assertThat(hand.boardCards()).containsExactly("7c", "Th", "Jd", "2s", "Ac");
+    }
+
+    @Test
+    void parse_riverHand_actionsTaggedCorrectly() {
+        ParsedHand hand = parser.parse(RIVER_HAND).get(0);
+
+        List<ParsedHand.ParsedAction> aliceActions = hand.actions().stream()
+            .filter(a -> a.username().equals("alice")).toList();
+
+        // call preflop, bet flop, check turn, bet river
+        assertThat(aliceActions).hasSize(4);
+        assertThat(aliceActions.get(2).street()).isEqualTo("TURN");
+        assertThat(aliceActions.get(2).actionType()).isEqualTo(ActionType.CHECK);
+        assertThat(aliceActions.get(3).street()).isEqualTo("RIVER");
+        assertThat(aliceActions.get(3).actionType()).isEqualTo(ActionType.BET);
     }
 }
