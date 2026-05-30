@@ -9,31 +9,31 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Unit tests for {@link PokerStarsParser}.
+ * Unit tests for {@link GGPokerParser}.
  * No Spring context — pure regex / logic tests.
  */
-class PokerStarsParserTest {
+class GGPokerParserTest {
 
-    PokerStarsParser parser;
+    GGPokerParser parser;
 
     // ── Sample hand strings ───────────────────────────────────────────────────
 
     /**
      * Minimal preflop-only hand: alice raises, bob folds, alice wins.
+     * Note: table line has no max-seats descriptor; "Dealt to" has optional colon.
      */
     static final String PREFLOP_HAND = """
-        PokerStars Hand #111111111:  Hold'em No Limit (15/30) - 2024/03/01 10:00:00 ET
-        Table 'TestTable 6-max' 6-max Seat #1 is the button
+        Poker Hand #HD111111111: Hold'em No Limit (15/30) - 2024/03/01 10:00:00
+        Table 'GGTestTable' Seat #1 is the button
         Seat 1: alice (1000 in chips)\s
         Seat 2: bob (980 in chips)\s
         alice: posts small blind 15
         bob: posts big blind 30
         *** HOLE CARDS ***
-        Dealt to alice [Ah Kd]
+        Dealt to alice: [Ah Kd]
         alice: raises 60 to 90
         bob: folds
-        Uncalled bet (60) returned to alice
-        alice collected 60 from pot
+        alice: collected 60 from pot
         alice: doesn't show hand\s
         *** SUMMARY ***
         Total pot 60 | Rake 0\s
@@ -42,18 +42,18 @@ class PokerStarsParserTest {
         """;
 
     /**
-     * Hand going to the turn with a flop check-raise.
+     * Hand with flop and turn action; alice check-raises the flop.
      */
     static final String FLOP_TURN_HAND = """
-        PokerStars Hand #222222222:  Hold'em No Limit (15/30) - 2024/03/01 10:05:00 ET
-        Table 'TestTable 6-max' 6-max Seat #2 is the button
+        Poker Hand #HD222222222: Hold'em No Limit (15/30) - 2024/03/01 10:05:00
+        Table 'GGTestTable' Seat #2 is the button
         Seat 1: alice (955 in chips)\s
         Seat 2: bob (1030 in chips)\s
         Seat 3: charlie (1015 in chips)\s
         alice: posts small blind 15
         bob: posts big blind 30
         *** HOLE CARDS ***
-        Dealt to alice [8h 9h]
+        Dealt to alice: [8h 9h]
         charlie: calls 30
         alice: calls 15
         bob: checks
@@ -66,8 +66,7 @@ class PokerStarsParserTest {
         *** TURN *** [7c Th Jd] [2s]
         alice: bets 225
         bob: folds
-        Uncalled bet (225) returned to alice
-        alice collected 615 from pot
+        alice: collected 615 from pot
         alice: doesn't show hand\s
         *** SUMMARY ***
         Total pot 615 | Rake 0\s
@@ -77,14 +76,12 @@ class PokerStarsParserTest {
         Seat 3: charlie folded on the Flop
         """;
 
-    /**
-     * Two hands concatenated (multi-hand file).
-     */
+    /** Two GGPoker hands concatenated in one file. */
     static final String TWO_HANDS = PREFLOP_HAND + "\n" + FLOP_TURN_HAND;
 
     @BeforeEach
     void setUp() {
-        parser = new PokerStarsParser();
+        parser = new GGPokerParser();
     }
 
     // ── Basic parsing ─────────────────────────────────────────────────────────
@@ -93,19 +90,16 @@ class PokerStarsParserTest {
     void parse_emptyInput_returnsEmptyList() {
         assertThat(parser.parse("")).isEmpty();
         assertThat(parser.parse(null)).isEmpty();
-        assertThat(parser.parse("   ")).isEmpty();
     }
 
     @Test
     void parse_singleHand_returnsOneHand() {
-        List<ParsedHand> hands = parser.parse(PREFLOP_HAND);
-        assertThat(hands).hasSize(1);
+        assertThat(parser.parse(PREFLOP_HAND)).hasSize(1);
     }
 
     @Test
     void parse_twoHandFile_returnsTwoHands() {
-        List<ParsedHand> hands = parser.parse(TWO_HANDS);
-        assertThat(hands).hasSize(2);
+        assertThat(parser.parse(TWO_HANDS)).hasSize(2);
     }
 
     // ── Header fields ─────────────────────────────────────────────────────────
@@ -124,40 +118,37 @@ class PokerStarsParserTest {
     }
 
     @Test
-    void parse_tableName_extracted() {
+    void parse_tableName_extractedWithoutMaxSeatsDescriptor() {
         ParsedHand hand = parser.parse(PREFLOP_HAND).get(0);
-        assertThat(hand.tableName()).isEqualTo("TestTable 6-max");
-    }
-
-    @Test
-    void parse_buttonSeat_extracted() {
-        ParsedHand hand = parser.parse(PREFLOP_HAND).get(0);
+        // GGPoker table line: "Table 'GGTestTable' Seat #1 is the button"
+        assertThat(hand.tableName()).isEqualTo("GGTestTable");
         assertThat(hand.buttonSeat()).isEqualTo(1);
     }
 
-    // ── Seats ─────────────────────────────────────────────────────────────────
+    // ── Dealt-to with colon ───────────────────────────────────────────────────
 
     @Test
-    void parse_seats_extractedCorrectly() {
-        ParsedHand hand = parser.parse(PREFLOP_HAND).get(0);
-        assertThat(hand.seats()).hasSize(2);
-        assertThat(hand.seats().get(0).username()).isEqualTo("alice");
-        assertThat(hand.seats().get(0).stackChips()).isEqualTo(1000);
-        assertThat(hand.seats().get(1).username()).isEqualTo("bob");
-    }
-
-    // ── Hole cards ────────────────────────────────────────────────────────────
-
-    @Test
-    void parse_heroHoleCards_extracted() {
+    void parse_dealtToWithColon_heroHoleCardsExtracted() {
+        // GGPoker uses "Dealt to alice: [Ah Kd]" (colon after username)
         ParsedHand hand = parser.parse(PREFLOP_HAND).get(0);
         assertThat(hand.heroHoleCards()).containsExactly("Ah", "Kd");
+    }
+
+    // ── Collected with colon ──────────────────────────────────────────────────
+
+    @Test
+    void parse_collectedWithColon_winnerExtracted() {
+        // GGPoker uses "alice: collected 60 from pot" (colon after username)
+        ParsedHand hand = parser.parse(PREFLOP_HAND).get(0);
+        assertThat(hand.winners()).hasSize(1);
+        assertThat(hand.winners().get(0).username()).isEqualTo("alice");
+        assertThat(hand.winners().get(0).chipsWon()).isEqualTo(60);
     }
 
     // ── Actions ───────────────────────────────────────────────────────────────
 
     @Test
-    void parse_preflopActions_raiseAndFold() {
+    void parse_preflopRaiseAndFold_parsedCorrectly() {
         ParsedHand hand = parser.parse(PREFLOP_HAND).get(0);
 
         List<ParsedHand.ParsedAction> aliceActions = hand.actions().stream()
@@ -167,7 +158,6 @@ class PokerStarsParserTest {
 
         assertThat(aliceActions).hasSize(1);
         assertThat(aliceActions.get(0).actionType()).isEqualTo(ActionType.RAISE);
-        assertThat(aliceActions.get(0).amount()).isEqualTo(90); // raise-to amount
         assertThat(aliceActions.get(0).street()).isEqualTo("PREFLOP");
 
         assertThat(bobActions).hasSize(1);
@@ -175,14 +165,14 @@ class PokerStarsParserTest {
     }
 
     @Test
-    void parse_postflopActions_streetTaggedCorrectly() {
+    void parse_flopTurnActions_streetTaggedCorrectly() {
         ParsedHand hand = parser.parse(FLOP_TURN_HAND).get(0);
 
-        // alice: checks (FLOP), raises (FLOP), bets (TURN)
         List<ParsedHand.ParsedAction> aliceActions = hand.actions().stream()
             .filter(a -> a.username().equals("alice")).toList();
 
-        assertThat(aliceActions).hasSize(4); // call preflop, check flop, raise flop, bet turn
+        // call preflop, check flop, raise flop, bet turn
+        assertThat(aliceActions).hasSize(4);
         assertThat(aliceActions.get(0).street()).isEqualTo("PREFLOP");
         assertThat(aliceActions.get(0).actionType()).isEqualTo(ActionType.CALL);
         assertThat(aliceActions.get(1).street()).isEqualTo("FLOP");
@@ -197,8 +187,7 @@ class PokerStarsParserTest {
 
     @Test
     void parse_preflopOnly_boardIsEmpty() {
-        ParsedHand hand = parser.parse(PREFLOP_HAND).get(0);
-        assertThat(hand.boardCards()).isEmpty();
+        assertThat(parser.parse(PREFLOP_HAND).get(0).boardCards()).isEmpty();
     }
 
     @Test
@@ -207,28 +196,16 @@ class PokerStarsParserTest {
         assertThat(hand.boardCards()).containsExactly("7c", "Th", "Jd", "2s");
     }
 
-    // ── Winners ───────────────────────────────────────────────────────────────
+    // ── PokerStars file rejected ──────────────────────────────────────────────
 
     @Test
-    void parse_winner_extractedFromCollectedLine() {
-        ParsedHand hand = parser.parse(PREFLOP_HAND).get(0);
-        assertThat(hand.winners()).hasSize(1);
-        assertThat(hand.winners().get(0).username()).isEqualTo("alice");
-        assertThat(hand.winners().get(0).chipsWon()).isEqualTo(60);
-    }
-
-    // ── parseStake helper (shared utility, lives in AbstractHandHistoryParser) ──
-
-    @Test
-    void parseStake_playMoney_returnsInteger() {
-        assertThat(AbstractHandHistoryParser.parseStake("15")).isEqualTo(15);
-        assertThat(AbstractHandHistoryParser.parseStake("30")).isEqualTo(30);
-    }
-
-    @Test
-    void parseStake_realMoney_convertsToCents() {
-        assertThat(AbstractHandHistoryParser.parseStake("0.01")).isEqualTo(1);
-        assertThat(AbstractHandHistoryParser.parseStake("0.50")).isEqualTo(50);
-        assertThat(AbstractHandHistoryParser.parseStake("$0.25")).isEqualTo(25);
+    void parse_pokerStarsFormat_returnsEmpty() {
+        // GGPokerParser should not parse PokerStars hand blocks
+        String psHand = """
+            PokerStars Hand #999: Hold'em No Limit (15/30) - 2024/03/01 10:00:00 ET
+            Table 'PSTable 6-max' 6-max Seat #1 is the button
+            Seat 1: alice (1000 in chips)
+            """;
+        assertThat(parser.parse(psHand)).isEmpty();
     }
 }

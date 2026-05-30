@@ -19,6 +19,7 @@ import com.poker.domain.repository.PotResultRepository;
 import com.poker.exception.ResourceNotFoundException;
 import com.poker.service.parser.HandHistoryParser;
 import com.poker.service.parser.ParsedHand;
+import com.poker.service.parser.GGPokerParser;
 import com.poker.service.parser.PokerStarsParser;
 import com.poker.web.dto.HandImportResponse;
 import org.springframework.stereotype.Service;
@@ -65,6 +66,7 @@ public class HandImportService {
     private final PotResultRepository  potRepo;
     private final HandImportRepository importRepo;
     private final PokerStarsParser     psParser;
+    private final GGPokerParser        ggParser;
 
     public HandImportService(PlayerRepository     playerRepo,
                              PokerTableRepository tableRepo,
@@ -72,7 +74,8 @@ public class HandImportService {
                              HandActionRepository actionRepo,
                              PotResultRepository  potRepo,
                              HandImportRepository importRepo,
-                             PokerStarsParser     psParser) {
+                             PokerStarsParser     psParser,
+                             GGPokerParser        ggParser) {
         this.playerRepo = playerRepo;
         this.tableRepo  = tableRepo;
         this.handRepo   = handRepo;
@@ -80,6 +83,7 @@ public class HandImportService {
         this.potRepo    = potRepo;
         this.importRepo = importRepo;
         this.psParser   = psParser;
+        this.ggParser   = ggParser;
     }
 
     /**
@@ -147,7 +151,7 @@ public class HandImportService {
     private HandHistoryParser selectParser(HandSource source) {
         return switch (source) {
             case POKERSTARS -> psParser;
-            // GGPoker parser added on Day 13
+            case GGPOKER    -> ggParser;
             default -> throw new IllegalArgumentException(
                 "No parser available for source: " + source);
         };
