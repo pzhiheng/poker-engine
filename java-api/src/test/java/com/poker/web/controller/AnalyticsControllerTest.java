@@ -2,10 +2,15 @@ package com.poker.web.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.poker.domain.entity.Player;
+import com.poker.domain.model.CoachingSuggestion;
+import com.poker.domain.model.PlayerProfile;
 import com.poker.domain.model.PlayerStats;
+import com.poker.domain.model.PlayerType;
+import com.poker.domain.model.Severity;
 import com.poker.domain.repository.PlayerRepository;
 import com.poker.security.JwtAuthFilter;
 import com.poker.security.JwtService;
+import com.poker.service.PlayerProfileService;
 import com.poker.service.StatsComputationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,6 +20,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -39,6 +45,7 @@ class AnalyticsControllerTest {
 
     @MockitoBean PlayerRepository        playerRepo;
     @MockitoBean StatsComputationService statsService;
+    @MockitoBean PlayerProfileService    profileService;
 
     UUID   playerId;
     Player player;
@@ -49,7 +56,7 @@ class AnalyticsControllerTest {
         player   = newPlayer(playerId, "alice", 1_000);
     }
 
-    // ── Happy path ────────────────────────────────────────────────────────────
+    // ── GET /players/{id}/stats ───────────────────────────────────────────────
 
     @Test
     void getStats_returnsPlayerStatsResponse() throws Exception {
@@ -88,12 +95,9 @@ class AnalyticsControllerTest {
         when(playerRepo.findById(playerId)).thenReturn(Optional.of(player));
         when(statsService.compute(playerId)).thenReturn(stats);
 
-        // No Authorization header — should still succeed
         mockMvc.perform(get("/players/{id}/stats", playerId))
             .andExpect(status().isOk());
     }
-
-    // ── Error paths ───────────────────────────────────────────────────────────
 
     @Test
     void getStats_unknownPlayer_returns404() throws Exception {
@@ -101,6 +105,51 @@ class AnalyticsControllerTest {
         when(playerRepo.findById(stranger)).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/players/{id}/stats", stranger))
+            .andExpect(status().isNotFound());
+    }
+
+    // ── GET /players/{id}/profile ─────────────────────────────────────────────
+
+    @Test
+    void getProfile_returnsPlayerProfileResponse() throws Exception {
+        PlayerStats stats = new PlayerStats(50, 0.20, 0.16, 0.05, 2.2, 0.32, 0.54, 18.0);
+        List<CoachingSuggestion> suggestions = List.of(
+            new CoachingSuggestion("Preflop", "Low 3-bet frequency",
+                "Mix in bluff 3-bets.", Severity.INFO)
+        );
+        PlayerProfile profile = new PlayerProfile(
+            playerId, "alice", stats, PlayerType.TAG, suggestions);
+        when(profileService.buildProfile(playerId)).thenReturn(profile);
+
+        mockMvc.perform(get("/players/{id}/profile", playerId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.playerId").value(playerId.toString()))
+            .andExpect(jsonPath("$.username").value("alice"))
+            .andExpect(jsonPath("$.playerType").value("TAG"))
+            .andExpect(jsonPath("$.playerTypeDescription").isNotEmpty())
+            .andExpect(jsonPath("$.stats.handsPlayed").value(50))
+            .andExpect(jsonPath("$.suggestions[0].category").value("Preflop"))
+            .andExpect(jsonPath("$.suggestions[0].severity").value("INFO"));
+    }
+
+    @Test
+    void getProfile_isPublicEndpoint_noAuthRequired() throws Exception {
+        PlayerStats stats = new PlayerStats(50, 0.20, 0.16, 0.05, 2.2, 0.32, 0.54, 18.0);
+        PlayerProfile profile = new PlayerProfile(
+            playerId, "alice", stats, PlayerType.TAG, List.of());
+        when(profileService.buildProfile(playerId)).thenReturn(profile);
+
+        mockMvc.perform(get("/players/{id}/profile", playerId))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    void getProfile_unknownPlayer_returns404() throws Exception {
+        UUID stranger = UUID.randomUUID();
+        when(profileService.buildProfile(stranger))
+            .thenThrow(com.poker.exception.ResourceNotFoundException.class);
+
+        mockMvc.perform(get("/players/{id}/profile", stranger))
             .andExpect(status().isNotFound());
     }
 
