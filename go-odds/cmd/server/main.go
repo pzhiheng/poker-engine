@@ -1,13 +1,14 @@
 // Command server is the entry point for the go-odds HTTP + gRPC service.
 //
-// Day 15: HTTP server with health/readiness probes and Prometheus metrics.
-// gRPC server (OddsService) is wired in on Day 16.
+// Day 15: HTTP server — health/readiness probes and Prometheus /metrics.
+// Day 16: gRPC server — OddsService.CalculateEquity (Monte Carlo) + Ping.
 package main
 
 import (
 	"context"
 	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,7 +16,10 @@ import (
 	"time"
 
 	"github.com/poker/go-odds/internal/health"
+	"github.com/poker/go-odds/internal/odds"
+	oddspb "github.com/poker/go-odds/proto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -26,30 +30,44 @@ func main() {
 
 	// ── Configuration ─────────────────────────────────────────────────────────
 	httpPort := getenv("HTTP_PORT", "8081")
-	addr := ":" + httpPort
+	grpcPort := getenv("GRPC_PORT", "50051")
 
-	// ── Routes ────────────────────────────────────────────────────────────────
+	// ── HTTP server ───────────────────────────────────────────────────────────
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /health",  health.LivenessHandler)
-	mux.HandleFunc("GET /ready",   health.ReadinessHandler)
-	mux.Handle("GET /metrics",     promhttp.Handler())
+	mux.HandleFunc("GET /health", health.LivenessHandler)
+	mux.HandleFunc("GET /ready", health.ReadinessHandler)
+	mux.Handle("GET /metrics", promhttp.Handler())
 
-	srv := &http.Server{
-		Addr:         addr,
+	httpSrv := &http.Server{
+		Addr:         ":" + httpPort,
 		Handler:      mux,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  30 * time.Second,
 	}
 
-	// ── Start server ──────────────────────────────────────────────────────────
 	go func() {
-		slog.Info("go-odds HTTP server starting",
-			"addr", addr,
-			"routes", []string{"GET /health", "GET /ready", "GET /metrics"},
-		)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("server failed", "err", err)
+		slog.Info("go-odds HTTP server starting", "port", httpPort)
+		if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("HTTP server failed", "err", err)
+			os.Exit(1)
+		}
+	}()
+
+	// ── gRPC server ───────────────────────────────────────────────────────────
+	lis, err := net.Listen("tcp", ":"+grpcPort)
+	if err != nil {
+		slog.Error("failed to bind gRPC port", "port", grpcPort, "err", err)
+		os.Exit(1)
+	}
+
+	grpcSrv := grpc.NewServer()
+	oddspb.RegisterOddsServiceServer(grpcSrv, odds.NewServer())
+
+	go func() {
+		slog.Info("go-odds gRPC server starting", "port", grpcPort)
+		if err := grpcSrv.Serve(lis); err != nil {
+			slog.Error("gRPC server failed", "err", err)
 			os.Exit(1)
 		}
 	}()
@@ -59,18 +77,20 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	sig := <-quit
 
-	slog.Info("shutting down server", "signal", sig.String())
+	slog.Info("shutting down", "signal", sig.String())
+
+	grpcSrv.GracefulStop()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
-		slog.Error("graceful shutdown failed", "err", err)
-		os.Exit(1)
+	if err := httpSrv.Shutdown(ctx); err != nil {
+		slog.Error("HTTP shutdown failed", "err", err)
 	}
+
 	slog.Info("server stopped")
 }
 
-// getenv returns the value of the environment variable named by key,
-// or fallback if the variable is unset or empty.
+// getenv returns the value of the env variable named by key, or fallback.
 func getenv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
