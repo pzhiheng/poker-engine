@@ -75,8 +75,20 @@ func (s *Server) CalculateEquity(
 	}
 
 	// ── Run ───────────────────────────────────────────────────────────────────
-	rng := rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0))
-	results := sim.Run(trials, rng)
+	var results []evaluator.SeatResult
+
+	if req.Exact {
+		// Exhaustive enumeration for ≤ 2 remaining board cards.
+		exact, combos, exactErr := sim.RunExact()
+		if exactErr != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "exact mode: %v", exactErr)
+		}
+		results = exact
+		trials = combos
+	} else {
+		rng := rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0))
+		results = sim.Run(trials, rng)
+	}
 
 	// ── Build response ────────────────────────────────────────────────────────
 	equities := make([]*oddspb.SeatEquity, len(req.Players))

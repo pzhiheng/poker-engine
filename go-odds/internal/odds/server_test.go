@@ -172,6 +172,78 @@ func TestCalculateEquity_InvalidBoardCard(t *testing.T) {
 	}
 }
 
+// ── Exact mode ───────────────────────────────────────────────────────────────
+
+func TestCalculateEquity_ExactMode_Flop(t *testing.T) {
+	client := newTestClient(t)
+	req := &oddspb.EquityRequest{
+		HandId: "exact-flop",
+		Street: "FLOP",
+		Players: []*oddspb.PlayerHand{
+			{Seat: 1, HoleCards: []string{"Ah", "Kd"}},
+			{Seat: 2, HoleCards: []string{"Qh", "Jd"}},
+		},
+		BoardCards: []string{"2c", "7s", "Td"},
+		Exact:      true,
+	}
+	resp, err := client.CalculateEquity(context.Background(), req)
+	if err != nil {
+		t.Fatalf("CalculateEquity exact: %v", err)
+	}
+	// C(45,2) = 990 runouts
+	if resp.TrialsRun != 990 {
+		t.Errorf("trials_run: got %d, want 990 (C(45,2))", resp.TrialsRun)
+	}
+	for _, eq := range resp.Equities {
+		total := eq.WinPct + eq.TiePct + eq.LosePct
+		if total < 0.99 || total > 1.01 {
+			t.Errorf("seat %d: win+tie+lose=%.4f, want ~1.0", eq.Seat, total)
+		}
+	}
+}
+
+func TestCalculateEquity_ExactMode_Turn(t *testing.T) {
+	client := newTestClient(t)
+	req := &oddspb.EquityRequest{
+		HandId: "exact-turn",
+		Street: "TURN",
+		Players: []*oddspb.PlayerHand{
+			{Seat: 1, HoleCards: []string{"Ah", "Kd"}},
+			{Seat: 2, HoleCards: []string{"Qh", "Jd"}},
+		},
+		BoardCards: []string{"2c", "7s", "Td", "3h"},
+		Exact:      true,
+	}
+	resp, err := client.CalculateEquity(context.Background(), req)
+	if err != nil {
+		t.Fatalf("CalculateEquity exact turn: %v", err)
+	}
+	// deck = 52 − 2 − 2 − 4 = 44 runouts
+	if resp.TrialsRun != 44 {
+		t.Errorf("trials_run: got %d, want 44", resp.TrialsRun)
+	}
+}
+
+func TestCalculateEquity_ExactMode_PreflopReturnsError(t *testing.T) {
+	client := newTestClient(t)
+	req := &oddspb.EquityRequest{
+		HandId: "exact-preflop-error",
+		Players: []*oddspb.PlayerHand{
+			{Seat: 1, HoleCards: []string{"Ah", "Kd"}},
+			{Seat: 2, HoleCards: []string{"Qh", "Jd"}},
+		},
+		BoardCards: nil, // preflop: drawNeed=5
+		Exact:      true,
+	}
+	_, err := client.CalculateEquity(context.Background(), req)
+	if err == nil {
+		t.Fatal("expected error for exact mode with preflop board")
+	}
+	if st, _ := status.FromError(err); st.Code() != codes.InvalidArgument {
+		t.Errorf("status: got %v, want InvalidArgument", st.Code())
+	}
+}
+
 func TestCalculateEquity_InvalidHoleCard(t *testing.T) {
 	client := newTestClient(t)
 	req := &oddspb.EquityRequest{
