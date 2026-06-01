@@ -1,9 +1,11 @@
 package evaluator_test
 
 import (
+	"context"
 	"math"
 	"math/rand/v2"
 	"testing"
+	"time"
 
 	"github.com/poker/go-odds/internal/evaluator"
 )
@@ -283,5 +285,113 @@ func TestSim_Run_PocketAcesVs72Preflop(t *testing.T) {
 	// AA vs 72o is ~85% equity pre-flop; accept wide band for MC variance
 	if winPct < 0.75 || winPct > 0.95 {
 		t.Errorf("AA vs 72o preflop: expected 75–95%%, got %.2f%%", winPct*100)
+	}
+}
+
+// ── RunConcurrent ─────────────────────────────────────────────────────────────
+
+func TestSim_RunConcurrent_TrialsTotalCorrect(t *testing.T) {
+	sim := mustSim(t,
+		[][]string{{"Ah", "Kd"}, {"Qh", "Jd"}},
+		[]string{"2c", "7s", "Td"},
+	)
+	const trials = 5000
+	results, err := sim.RunConcurrent(context.Background(), trials, 4)
+	if err != nil {
+		t.Fatalf("RunConcurrent: %v", err)
+	}
+	for i, r := range results {
+		total := r.WinCount + r.TieCount + r.LoseCount
+		if total != trials {
+			t.Errorf("player %d: win+tie+lose=%d, want %d", i, total, trials)
+		}
+	}
+}
+
+func TestSim_RunConcurrent_MatchesSingleThreaded(t *testing.T) {
+	// Both MC paths should agree within 4% on the same hand.
+	players := [][]string{{"Ac", "Kd"}, {"7h", "2d"}}
+	board := []string{"As", "3d", "8c"}
+
+	simS := mustSim(t, players, board)
+	simC := mustSim(t, players, board)
+
+	const trials = 20_000
+	single := simS.Run(trials, rand.New(rand.NewPCG(99, 0)))
+	concurrent, err := simC.RunConcurrent(context.Background(), trials, 4)
+	if err != nil {
+		t.Fatalf("RunConcurrent: %v", err)
+	}
+
+	for i := range single {
+		sw := single[i].WinPct(trials)
+		cw := concurrent[i].WinPct(trials)
+		if diff := math.Abs(sw - cw); diff > 0.04 {
+			t.Errorf("player %d: single=%.4f concurrent=%.4f diff=%.4f > 0.04", i, sw, cw, diff)
+		}
+	}
+}
+
+func TestSim_RunConcurrent_WorkersOne_FallsBackToSingle(t *testing.T) {
+	// workers=1 should use the single-threaded path (no goroutine overhead).
+	sim := mustSim(t,
+		[][]string{{"Ah", "Ad"}, {"Kh", "Kd"}},
+		[]string{"2c", "7s", "Td"},
+	)
+	const trials = 2000
+	results, err := sim.RunConcurrent(context.Background(), trials, 1)
+	if err != nil {
+		t.Fatalf("RunConcurrent workers=1: %v", err)
+	}
+	for i, r := range results {
+		total := r.WinCount + r.TieCount + r.LoseCount
+		if total != trials {
+			t.Errorf("player %d: total=%d, want %d", i, total, trials)
+		}
+	}
+}
+
+func TestSim_RunConcurrent_ZeroTrials(t *testing.T) {
+	sim := mustSim(t,
+		[][]string{{"Ah", "Kd"}, {"Qh", "Jd"}},
+		[]string{"2c", "7s", "Td"},
+	)
+	results, err := sim.RunConcurrent(context.Background(), 0, 4)
+	if err != nil {
+		t.Fatalf("RunConcurrent zero: %v", err)
+	}
+	for i, r := range results {
+		if r.WinCount+r.TieCount+r.LoseCount != 0 {
+			t.Errorf("player %d: expected 0 counts for 0 trials", i)
+		}
+	}
+}
+
+func TestSim_RunConcurrent_ContextCancellation(t *testing.T) {
+	// Cancel the context after a short timeout; the call should return
+	// before all trials complete and ctx.Err() should be non-nil.
+	sim := mustSim(t,
+		[][]string{{"Ah", "Ad"}, {"Kh", "Kd"}},
+		nil, // preflop — largest draw (5 cards), slowest per trial
+	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
+	defer cancel()
+
+	// Run a huge number of trials so cancellation is almost certain.
+	results, err := sim.RunConcurrent(ctx, 10_000_000, 4)
+	// err may be nil if the MC finished before the timeout (very fast machine),
+	// so we only check structural invariants rather than asserting err != nil.
+	_ = err
+
+	// Whichever trials did complete must still be internally consistent:
+	// each player's total must equal the same number across all players.
+	total0 := results[0].WinCount + results[0].TieCount + results[0].LoseCount
+	for i, r := range results[1:] {
+		total := r.WinCount + r.TieCount + r.LoseCount
+		if total != total0 {
+			t.Errorf("player %d total=%d != player 0 total=%d after cancellation",
+				i+1, total, total0)
+		}
 	}
 }

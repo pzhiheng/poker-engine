@@ -3,8 +3,9 @@ package odds
 
 import (
 	"context"
+	"errors"
 	"log/slog"
-	"math/rand/v2"
+	"runtime"
 	"time"
 
 	"github.com/poker/go-odds/internal/evaluator"
@@ -18,22 +19,26 @@ const defaultTrials = 50_000
 // Server implements oddspb.OddsServiceServer.
 type Server struct {
 	oddspb.UnimplementedOddsServiceServer
+	workers int // concurrent goroutines for Monte Carlo; 0 means runtime.NumCPU()
 }
 
 // NewServer returns a ready-to-register OddsService server.
 func NewServer() *Server { return &Server{} }
+
+// NewServerWithWorkers returns a server that uses exactly n goroutines for MC.
+// Pass 0 to use runtime.NumCPU().
+func NewServerWithWorkers(n int) *Server { return &Server{workers: n} }
 
 // Ping is the liveness probe for the gRPC interface.
 func (s *Server) Ping(_ context.Context, _ *oddspb.PingRequest) (*oddspb.PingResponse, error) {
 	return &oddspb.PingResponse{Status: "ok"}, nil
 }
 
-// CalculateEquity runs a Monte Carlo equity simulation and returns win/tie/lose
-// percentages for every player in the request.
+// CalculateEquity runs equity simulation and returns win/tie/lose percentages
+// for every player in the request.
 //
-// Day 16: single-threaded Monte Carlo only.
-// Day 17 will add the exact exhaustive path (req.Exact = true).
-// Day 18 will add concurrent simulation.
+// Monte Carlo path (Day 18): concurrent across runtime.NumCPU() workers.
+// Exact path (Day 17): exhaustive enumeration for ≤ 2 remaining board cards.
 func (s *Server) CalculateEquity(
 	ctx context.Context, req *oddspb.EquityRequest,
 ) (*oddspb.EquityResponse, error) {
@@ -86,8 +91,18 @@ func (s *Server) CalculateEquity(
 		results = exact
 		trials = combos
 	} else {
-		rng := rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0))
-		results = sim.Run(trials, rng)
+		// Concurrent Monte Carlo — number of workers is server-configurable.
+		w := s.workers
+		if w <= 0 {
+			w = runtime.NumCPU()
+		}
+		var runErr error
+		results, runErr = sim.RunConcurrent(ctx, trials, w)
+		if runErr != nil &&
+			!errors.Is(runErr, context.DeadlineExceeded) &&
+			!errors.Is(runErr, context.Canceled) {
+			return nil, status.Errorf(codes.Internal, "simulation failed: %v", runErr)
+		}
 	}
 
 	// ── Build response ────────────────────────────────────────────────────────

@@ -18,10 +18,14 @@ import (
 const bufSize = 1 << 20
 
 func newTestClient(t *testing.T) oddspb.OddsServiceClient {
+	return newTestClientWithWorkers(t, 0) // 0 → runtime.NumCPU()
+}
+
+func newTestClientWithWorkers(t *testing.T, workers int) oddspb.OddsServiceClient {
 	t.Helper()
 	lis := bufconn.Listen(bufSize)
 	srv := grpc.NewServer()
-	oddspb.RegisterOddsServiceServer(srv, odds.NewServer())
+	oddspb.RegisterOddsServiceServer(srv, odds.NewServerWithWorkers(workers))
 
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.GracefulStop)
@@ -257,5 +261,58 @@ func TestCalculateEquity_InvalidHoleCard(t *testing.T) {
 	_, err := client.CalculateEquity(context.Background(), req)
 	if err == nil {
 		t.Fatal("expected error for invalid hole card")
+	}
+}
+
+// ── Concurrent Monte Carlo (Day 18) ──────────────────────────────────────────
+
+func TestCalculateEquity_ConcurrentPath_TrialsTotalCorrect(t *testing.T) {
+	// Use 4 workers explicitly to exercise the concurrent code path.
+	client := newTestClientWithWorkers(t, 4)
+	req := &oddspb.EquityRequest{
+		HandId: "concurrent-test",
+		Street: "FLOP",
+		Players: []*oddspb.PlayerHand{
+			{Seat: 1, HoleCards: []string{"Ah", "Kd"}},
+			{Seat: 2, HoleCards: []string{"Qh", "Jd"}},
+		},
+		BoardCards: []string{"2c", "7s", "Td"},
+		Trials:     4000,
+	}
+	resp, err := client.CalculateEquity(context.Background(), req)
+	if err != nil {
+		t.Fatalf("CalculateEquity concurrent: %v", err)
+	}
+	if resp.TrialsRun != 4000 {
+		t.Errorf("trials_run: got %d, want 4000", resp.TrialsRun)
+	}
+	for _, eq := range resp.Equities {
+		total := eq.WinPct + eq.TiePct + eq.LosePct
+		if total < 0.99 || total > 1.01 {
+			t.Errorf("seat %d: win+tie+lose=%.4f, want ~1.0", eq.Seat, total)
+		}
+	}
+}
+
+func TestCalculateEquity_ConcurrentPath_StrongFavourite(t *testing.T) {
+	// Concurrent path should give same directional result as single-threaded.
+	client := newTestClientWithWorkers(t, 4)
+	req := &oddspb.EquityRequest{
+		HandId: "concurrent-favourite",
+		Street: "FLOP",
+		Players: []*oddspb.PlayerHand{
+			{Seat: 1, HoleCards: []string{"Ac", "Kd"}},
+			{Seat: 2, HoleCards: []string{"7h", "2d"}},
+		},
+		BoardCards: []string{"As", "3s", "8c"},
+		Trials:     8000,
+	}
+	resp, err := client.CalculateEquity(context.Background(), req)
+	if err != nil {
+		t.Fatalf("CalculateEquity: %v", err)
+	}
+	if resp.Equities[0].WinPct < 0.55 {
+		t.Errorf("AK on A-3-8: expected seat 1 win > 55%%, got %.2f%%",
+			resp.Equities[0].WinPct*100)
 	}
 }
