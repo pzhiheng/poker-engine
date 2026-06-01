@@ -1,0 +1,7 @@
+# Don't copy test files or local build artifacts into the Docker context.
+*_test.go
+**/*_test.go
+*.md
+.gitignore
+Dockerfile
+.dockerignore
