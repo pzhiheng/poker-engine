@@ -221,3 +221,77 @@ func TestHandRank_KickerBreaksTie(t *testing.T) {
 		t.Error("better kicker should win the pair of Aces tie")
 	}
 }
+
+// ── Cross-category table tests ────────────────────────────────────────────────
+
+// TestHandRanking_CategoryOrder verifies that every category beats all lower
+// ones using a representative hand for each.
+func TestHandRanking_CategoryOrder(t *testing.T) {
+	hands := []struct {
+		name  string
+		cards []string
+	}{
+		{"HighCard", []string{"Ah", "Kd", "Qc", "Jh", "9s"}},
+		{"OnePair", []string{"Ah", "Ad", "Kh", "Qd", "Jc"}},
+		{"TwoPair", []string{"Ah", "Ad", "Kh", "Kd", "Qc"}},
+		{"ThreeOfAKind", []string{"Ah", "Ad", "Ac", "Kh", "Qd"}},
+		{"Straight", []string{"9c", "8d", "7h", "6s", "5c"}},
+		{"Flush", []string{"Ah", "Qh", "Jh", "9h", "2h"}},
+		{"FullHouse", []string{"Kh", "Kd", "Kc", "Qh", "Qd"}},
+		{"FourOfAKind", []string{"Ah", "Ad", "Ac", "As", "Kh"}},
+		{"StraightFlush", []string{"9h", "8h", "7h", "6h", "5h"}},
+	}
+
+	ranks := make([]evaluator.HandRank, len(hands))
+	for i, h := range hands {
+		ranks[i] = best(t, h.cards...)
+	}
+
+	for i := 1; i < len(ranks); i++ {
+		if !ranks[i].GreaterThan(ranks[i-1]) {
+			t.Errorf("%s should beat %s", hands[i].name, hands[i-1].name)
+		}
+		if ranks[i-1].GreaterThan(ranks[i]) {
+			t.Errorf("%s should NOT beat %s", hands[i-1].name, hands[i].name)
+		}
+	}
+}
+
+// TestHandRanking_FullHouseOrdering verifies that a higher trips beats a lower
+// full house, and that pair tiebreaks trips.
+func TestHandRanking_FullHouseOrdering(t *testing.T) {
+	acesOverKings := best(t, "Ah", "Ad", "Ac", "Kh", "Kd") // AAA KK
+	kingsOverAces := best(t, "Kh", "Kd", "Kc", "Ah", "Ad") // KKK AA
+
+	if !acesOverKings.GreaterThan(kingsOverAces) {
+		t.Error("AAA KK should beat KKK AA")
+	}
+
+	kingsOverQueens := best(t, "Kh", "Kd", "Kc", "Qh", "Qd") // KKK QQ
+	if !kingsOverAces.GreaterThan(kingsOverQueens) {
+		t.Error("KKK AA should beat KKK QQ")
+	}
+}
+
+// TestHandRanking_FlushKickerOrdering verifies kicker comparison within Flush.
+func TestHandRanking_FlushKickerOrdering(t *testing.T) {
+	aceHighFlush := best(t, "Ah", "Qh", "Jh", "9h", "2h") // A-Q-J-9-2 of hearts
+	kingHighFlush := best(t, "Kh", "Qh", "Jh", "9h", "2h") // K-Q-J-9-2 of hearts
+
+	if !aceHighFlush.GreaterThan(kingHighFlush) {
+		t.Error("A-high flush should beat K-high flush")
+	}
+}
+
+// TestBest5_SixCards verifies Best5 works with 6 cards (e.g., turn).
+func TestBest5_SixCards_PicksBestFive(t *testing.T) {
+	// Board: Ah Kh Qh Jh Th + 2c (off-suit junk)
+	// Best 5 = A-K-Q-J-T straight flush (royal)
+	r := best(t, "Ah", "Kh", "Qh", "Jh", "Th", "2c")
+	if r.Category != evaluator.StraightFlush {
+		t.Errorf("6-card input: got %v, want StraightFlush (royal)", r.Category)
+	}
+	if r.Ranks[0] != evaluator.Ace {
+		t.Errorf("royal SF high: got %v, want Ace", r.Ranks[0])
+	}
+}

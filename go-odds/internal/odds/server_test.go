@@ -264,6 +264,45 @@ func TestCalculateEquity_InvalidHoleCard(t *testing.T) {
 	}
 }
 
+// ── Multi-way equity (3+ players) ────────────────────────────────────────────
+
+func TestCalculateEquity_ThreePlayers_SumApproxOne(t *testing.T) {
+	client := newTestClient(t)
+	req := &oddspb.EquityRequest{
+		HandId: "three-way",
+		Street: "FLOP",
+		Players: []*oddspb.PlayerHand{
+			{Seat: 1, HoleCards: []string{"Ah", "Kd"}},
+			{Seat: 2, HoleCards: []string{"Qh", "Jd"}},
+			{Seat: 3, HoleCards: []string{"7c", "2s"}},
+		},
+		BoardCards: []string{"As", "3d", "8c"},
+		Trials:     2000,
+	}
+	resp, err := client.CalculateEquity(context.Background(), req)
+	if err != nil {
+		t.Fatalf("CalculateEquity 3-way: %v", err)
+	}
+	if len(resp.Equities) != 3 {
+		t.Fatalf("equities count: got %d, want 3", len(resp.Equities))
+	}
+	// Sum of all win%+tie%+lose% should each be ~1.0 per player.
+	for _, eq := range resp.Equities {
+		total := eq.WinPct + eq.TiePct + eq.LosePct
+		if total < 0.99 || total > 1.01 {
+			t.Errorf("seat %d: total=%.4f, want ~1.0", eq.Seat, total)
+		}
+	}
+	// Sum of all win% across players must be ≤ 1 (one winner per runout).
+	var sumWin float64
+	for _, eq := range resp.Equities {
+		sumWin += eq.WinPct
+	}
+	if sumWin < 0.99 || sumWin > 1.01 {
+		t.Errorf("sum of win%% across players=%.4f, want ~1.0", sumWin)
+	}
+}
+
 // ── Concurrent Monte Carlo (Day 18) ──────────────────────────────────────────
 
 func TestCalculateEquity_ConcurrentPath_TrialsTotalCorrect(t *testing.T) {
