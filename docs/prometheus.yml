@@ -1,14 +1,19 @@
+# Prometheus scrape configuration for the poker-engine stack.
 global:
-  scrape_interval: 15s
+  scrape_interval:     15s
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: "java-api"
-    static_configs:
-      - targets: ["java-api:8080"]
+  - job_name: java-api
     metrics_path: /actuator/prometheus
-
-  - job_name: "go-odds"
     static_configs:
-      - targets: ["go-odds:9091"]
+      - targets: ['java-api:8080']
+        labels:
+          service: java-api
+
+  - job_name: go-odds
     metrics_path: /metrics
+    static_configs:
+      - targets: ['go-odds:8081']
+        labels:
+          service: go-odds

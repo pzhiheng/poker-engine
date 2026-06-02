@@ -1,47 +1,59 @@
-version: "3.9"
+# ── Poker Engine — local development stack ────────────────────────────────────
+#
+# Core services (started by default):
+#   postgres   — database
+#   go-odds    — gRPC equity service (HTTP :8081, gRPC :50051)
+#   java-api   — Spring Boot REST + WebSocket API (:8080)
+#
+# Observability services (started with --profile observability):
+#   prometheus — metrics scraping (:9090)
+#   grafana    — dashboards (:3000)
+#   jaeger     — distributed traces (:16686)
+#
+# Quick start:
+#   docker compose up           # core services only
+#   docker compose --profile observability up   # + metrics/tracing
 
 services:
-  # ── PostgreSQL ─────────────────────────────────────────────────────────
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: poker
-      POSTGRES_USER: poker
+      POSTGRES_DB:       poker
+      POSTGRES_USER:     poker
       POSTGRES_PASSWORD: poker
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U poker"]
+      test: ["CMD-SHELL", "pg_isready -U poker -d poker"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  # ── Go Odds Service ─────────────────────────────────────────────────────
+  # ── Go Odds Service ─────────────────────────────────────────────────────────
   go-odds:
     build:
       context: ./go-odds
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "9090:9090"   # gRPC
-      - "9091:9091"   # HTTP metrics / health / pprof
+      - "8081:8081"    # HTTP  — health (/health, /ready), metrics (/metrics)
+      - "50051:50051"  # gRPC  — OddsService.CalculateEquity + Ping
     environment:
-      GRPC_PORT: 9090
-      HTTP_PORT: 9091
-      DB_DSN: "postgres://poker:poker@postgres:5432/poker?sslmode=disable"
-    depends_on:
-      postgres:
-        condition: service_healthy
+      HTTP_PORT:  "8081"
+      GRPC_PORT:  "50051"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9091/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
 
-  # ── Java API ────────────────────────────────────────────────────────────
+  # ── Java API ────────────────────────────────────────────────────────────────
   java-api:
     build:
       context: ./java-api
@@ -50,51 +62,68 @@ services:
     ports:
       - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/poker
+      SPRING_DATASOURCE_URL:      jdbc:postgresql://postgres:5432/poker
       SPRING_DATASOURCE_USERNAME: poker
       SPRING_DATASOURCE_PASSWORD: poker
       SPRING_THREADS_VIRTUAL_ENABLED: "true"
-      ODDS_SERVICE_HOST: go-odds
-      ODDS_SERVICE_PORT: 9090
-      JWT_SECRET: "change-me-in-production-use-a-long-random-string"
+      JWT_SECRET: "change-me-in-production-use-a-long-random-string-32c"
+      # Enable the real gRPC equity provider (GrpcEquityProvider)
+      GO_ODDS_ENABLED: "true"
+      GO_ODDS_HOST:    go-odds
+      GO_ODDS_PORT:    "50051"
+      GO_ODDS_TRIALS:  "10000"
     depends_on:
       postgres:
         condition: service_healthy
       go-odds:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 60s
 
-  # ── Prometheus ──────────────────────────────────────────────────────────
+  # ── Prometheus ──────────────────────────────────────────────────────────────
   prometheus:
-    image: prom/prometheus:latest
+    profiles: ["observability"]
+    image: prom/prometheus:v2.53.0
     restart: unless-stopped
     ports:
-      - "9092:9090"
+      - "9090:9090"
     volumes:
       - ./docs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
 
-  # ── Grafana ─────────────────────────────────────────────────────────────
+  # ── Grafana ─────────────────────────────────────────────────────────────────
   grafana:
-    image: grafana/grafana:latest
+    profiles: ["observability"]
+    image: grafana/grafana:11.1.0
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
+      GF_SECURITY_ADMIN_USER:     admin
       GF_SECURITY_ADMIN_PASSWORD: poker
     volumes:
       - grafana_data:/var/lib/grafana
 
-  # ── Jaeger (all-in-one) ─────────────────────────────────────────────────
+  # ── Jaeger (all-in-one) ─────────────────────────────────────────────────────
   jaeger:
-    image: jaegertracing/all-in-one:latest
+    profiles: ["observability"]
+    image: jaegertracing/all-in-one:1.59
     restart: unless-stopped
     ports:
-      - "16686:16686"   # Jaeger UI
-      - "4317:4317"     # OTLP gRPC
-      - "4318:4318"     # OTLP HTTP
+      - "16686:16686"  # Jaeger UI
+      - "4317:4317"    # OTLP gRPC ingest
+      - "4318:4318"    # OTLP HTTP ingest
 
 volumes:
   postgres_data:
+  prometheus_data:
   grafana_data:

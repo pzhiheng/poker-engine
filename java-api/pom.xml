@@ -195,8 +195,7 @@
 					<protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
 					<pluginId>grpc-java</pluginId>
 					<pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}</pluginArtifact>
-					<!-- Point at the shared proto/ directory at the repo root -->
-					<protoSourceRoot>${project.basedir}/../proto</protoSourceRoot>
+					<!-- Default protoSourceRoot = src/main/proto (odds.proto lives there) -->
 				</configuration>
 				<executions>
 					<execution>

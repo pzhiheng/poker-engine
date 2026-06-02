@@ -1,34 +1,48 @@
-# ─── Stage 1: build ───────────────────────────────────────────────────────────
-# Full JDK + Maven wrapper to compile and package the fat-jar.
-# This layer is cached as long as pom.xml + .mvn/ don't change.
-FROM eclipse-temurin:21-jdk-alpine AS build
-WORKDIR /workspace
+# ── Stage 1: dependency resolution ────────────────────────────────────────────
+# Cache Maven deps, plugin binaries, and generated proto stubs in a separate
+# layer so source-only changes don't re-download everything.
+FROM eclipse-temurin:21-jdk-alpine AS deps
 
-# 1. Resolve dependencies before copying source so Docker cache is reused on
-#    source-only changes.
-COPY .mvn   .mvn
-COPY mvnw   .
-COPY pom.xml .
-RUN chmod +x mvnw && ./mvnw dependency:go-offline -q
+WORKDIR /build
 
-# 2. Copy source and build.  Tests are skipped here — they run in CI via
-#    ./mvnw verify against a real Postgres service (see .github/workflows/ci.yml).
-COPY src src
-RUN ./mvnw package -DskipTests -q
+COPY .mvn/ .mvn/
+COPY mvnw pom.xml ./
+RUN chmod +x mvnw
 
-# ─── Stage 2: runtime ─────────────────────────────────────────────────────────
-# Slim JRE-only image — no compiler, no Maven cache, much smaller footprint.
-FROM eclipse-temurin:21-jre-alpine
+# Download compile/test deps and the protoc + protoc-gen-grpc-java binaries,
+# then generate Java stubs from src/main/proto/odds.proto.
+# Layer is cached as long as pom.xml does not change.
+RUN ./mvnw -B --no-transfer-progress \
+        dependency:resolve \
+        dependency:resolve-plugins \
+        -q
+
+# ── Stage 2: compile + package ────────────────────────────────────────────────
+FROM deps AS builder
+
+# Copy source code; invalidates this layer only on src/ changes.
+COPY src/ src/
+
+# Tests are skipped here — they require a live Postgres and run in CI
+# via ./mvnw verify with a service container (see .github/workflows/ci.yml).
+RUN ./mvnw -B --no-transfer-progress package -DskipTests -q
+
+# ── Stage 3: runtime ──────────────────────────────────────────────────────────
+FROM eclipse-temurin:21-jre-alpine AS runtime
+
+RUN addgroup -S poker && adduser -S poker -G poker
+
 WORKDIR /app
 
-# Drop root privileges: create a dedicated user and run as it.
-RUN addgroup -S poker && adduser -S poker -G poker
-USER poker
-
-COPY --from=build /workspace/target/*.jar app.jar
+COPY --from=builder /build/target/*.jar app.jar
 
 EXPOSE 8080
 
-# Spring Boot's executable-jar launcher; JVM flags can be passed via
-# the JAVA_TOOL_OPTIONS env var (e.g. -Xmx512m) without changing this file.
-ENTRYPOINT ["java", "-jar", "app.jar"]
+USER poker
+
+# UseContainerSupport  — honour the cgroup memory limit (set by Docker)
+# MaxRAMPercentage=75  — use up to 75 % of the container's RAM for the heap
+ENTRYPOINT ["java", \
+  "-XX:+UseContainerSupport", \
+  "-XX:MaxRAMPercentage=75.0", \
+  "-jar", "app.jar"]
