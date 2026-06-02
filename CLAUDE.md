@@ -113,7 +113,7 @@ The platform is a **practice table with a built-in coach**: the engine records h
 Week 1: ████████████████████████  Days 1-7 complete ✅
 Week 2: ████████████████████████  Days 8-14 complete ✅
 Week 3: ████████████████████████  Days 15-21 complete ✅
-Week 4: ████████░░░░░░░░░░░░░░░░  Days 22-24 complete ✅ | Days 25-30 pending
+Week 4: ██████████░░░░░░░░░░░░░░  Days 22-25 complete ✅ | Days 26-30 pending
 ```
 
 **Test count at last push: 269 Java + all Go tests, 0 failures**

@@ -46,6 +46,8 @@ services:
     environment:
       HTTP_PORT:  "8081"
       GRPC_PORT:  "50051"
+      # Tracing: set OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318 to send
+      # spans to Jaeger (start Jaeger with --profile observability first).
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8081/health || exit 1"]
       interval: 10s
@@ -74,6 +76,8 @@ services:
       GO_ODDS_TRIALS:  "10000"
       # Structured JSON logs for Docker / log-aggregator consumption (ECS format)
       LOG_FORMAT: "ecs"
+      # Send Java traces to Jaeger (start with --profile observability).
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: "http://jaeger:4318/v1/traces"
     depends_on:
       postgres:
         condition: service_healthy

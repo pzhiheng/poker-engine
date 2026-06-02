@@ -34,6 +34,9 @@ public class GrpcConfig {
         return ManagedChannelBuilder
                 .forAddress(host, port)
                 .usePlaintext()
+                // Propagates the active W3C traceparent header so Go spans are
+                // correlated with the parent Java HTTP span in Jaeger.
+                .intercept(new TraceContextClientInterceptor())
                 .build();
     }
 }

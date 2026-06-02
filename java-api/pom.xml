@@ -88,6 +88,19 @@
 			<artifactId>micrometer-registry-prometheus</artifactId>
 		</dependency>
 
+		<!-- ── Distributed tracing (Micrometer → OTel → Jaeger) ─────────── -->
+		<!-- Bridges Micrometer Observation API to the OTel SDK; auto-instruments
+		     Spring MVC, WebSocket, JDBC, etc. via @Observed / aop proxy. -->
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-tracing-bridge-otel</artifactId>
+		</dependency>
+		<!-- Ships traces to Jaeger (or any OTLP collector) over HTTP. -->
+		<dependency>
+			<groupId>io.opentelemetry</groupId>
+			<artifactId>opentelemetry-exporter-otlp</artifactId>
+		</dependency>
+
 		<!-- JWT: io.jsonwebtoken (JJWT) -->
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>

@@ -2,6 +2,7 @@
 //
 // Day 15: HTTP server — health/readiness probes and Prometheus /metrics.
 // Day 16: gRPC server — OddsService.CalculateEquity (Monte Carlo) + Ping.
+// Day 25: telemetry — Prometheus counters + OTel/Jaeger trace propagation.
 package main
 
 import (
@@ -17,8 +18,10 @@ import (
 
 	"github.com/poker/go-odds/internal/health"
 	"github.com/poker/go-odds/internal/odds"
+	"github.com/poker/go-odds/internal/telemetry"
 	oddspb "github.com/poker/go-odds/proto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 )
 
@@ -54,6 +57,15 @@ func main() {
 		}
 	}()
 
+	// ── OpenTelemetry tracing ─────────────────────────────────────────────────
+	// Reads OTEL_EXPORTER_OTLP_ENDPOINT; no-op when the variable is unset.
+	shutdownTracing, tracingErr := telemetry.InitTracing(context.Background())
+	if tracingErr != nil {
+		slog.Warn("tracing init failed — continuing without traces", "err", tracingErr)
+		shutdownTracing = func() {}
+	}
+	defer shutdownTracing()
+
 	// ── gRPC server ───────────────────────────────────────────────────────────
 	lis, err := net.Listen("tcp", ":"+grpcPort)
 	if err != nil {
@@ -61,7 +73,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	grpcSrv := grpc.NewServer()
+	grpcSrv := grpc.NewServer(
+		// otelgrpc v0.46+ uses a stats handler instead of an interceptor.
+		// It extracts W3C traceparent from gRPC metadata and creates child
+		// spans — enabling Java → Go trace correlation in Jaeger.
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+		// Prometheus counters: poker_grpc_requests_total / poker_grpc_errors_total.
+		grpc.ChainUnaryInterceptor(telemetry.MetricsUnaryInterceptor),
+	)
 	oddspb.RegisterOddsServiceServer(grpcSrv, odds.NewServer())
 
 	go func() {
