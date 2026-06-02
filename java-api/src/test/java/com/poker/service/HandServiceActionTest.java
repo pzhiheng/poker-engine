@@ -55,6 +55,7 @@ class HandServiceActionTest {
     @Mock PlayerRepository        playerRepo;
     @Mock DeckService             deckService;
     @Mock DecisionEvaluatorService evaluator;
+    @Mock org.springframework.messaging.simp.SimpMessagingTemplate broker;
 
     final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -81,7 +82,7 @@ class HandServiceActionTest {
     void setUp() throws Exception {
         service = new HandService(tableRepo, seatRepo, handRepo, snapshotRepo,
             actionRepo, playerRepo, deckService, evaluator, objectMapper,
-            new SimpleMeterRegistry());
+            new SimpleMeterRegistry(), broker);
 
         handId    = UUID.randomUUID();
         playerAId = UUID.randomUUID();

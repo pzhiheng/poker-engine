@@ -55,6 +55,7 @@ class HandServiceTest {
     @Mock PlayerRepository        playerRepo;
     @Mock DeckService             deckService;
     @Mock DecisionEvaluatorService evaluator;
+    @Mock org.springframework.messaging.simp.SimpMessagingTemplate broker;
 
     // Real ObjectMapper for JSON serialisation in snapshots
     final ObjectMapper objectMapper = new ObjectMapper();
@@ -80,7 +81,7 @@ class HandServiceTest {
         service = new HandService(
             tableRepo, seatRepo, handRepo, snapshotRepo,
             actionRepo, playerRepo, deckService, evaluator, objectMapper,
-            meterRegistry);
+            meterRegistry, broker);
 
         tableId   = UUID.randomUUID();
         playerAId = UUID.randomUUID();

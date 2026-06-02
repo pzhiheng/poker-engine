@@ -53,6 +53,9 @@ public class SecurityConfig {
                 // Swagger UI + OpenAPI spec — public so reviewers can explore the API
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**",
                                  "/swagger-ui.html").permitAll()
+                // Static HTML client + WebSocket upgrade (SockJS uses multiple sub-paths)
+                .requestMatchers("/", "/index.html", "/**.html",
+                                 "/ws/**").permitAll()
                 .anyRequest().hasRole("PLAYER")
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

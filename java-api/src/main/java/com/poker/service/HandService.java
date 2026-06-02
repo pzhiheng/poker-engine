@@ -24,11 +24,14 @@ import com.poker.domain.repository.PokerTableRepository;
 import com.poker.domain.repository.TableSeatRepository;
 import com.poker.exception.BusinessRuleException;
 import com.poker.exception.ResourceNotFoundException;
+import com.poker.config.WebSocketConfig;
 import com.poker.web.dto.ActionRequest;
 import com.poker.web.dto.ActionResponse;
 import com.poker.web.dto.HandResponse;
+import com.poker.web.dto.TableEvent;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,6 +65,8 @@ public class HandService {
     private final DecisionEvaluatorService evaluator;
     private final ObjectMapper            objectMapper;
 
+    private final SimpMessagingTemplate broker;
+
     /** Incremented once per {@link #startHand} call that succeeds. */
     private final Counter handsStartedCounter;
     /** Incremented when a hand ends because all others folded. */
@@ -69,16 +74,17 @@ public class HandService {
     /** Incremented when a hand reaches showdown. */
     private final Counter handsShowdownCounter;
 
-    public HandService(PokerTableRepository    tableRepo,
-                       TableSeatRepository     seatRepo,
-                       HandRepository          handRepo,
-                       HandSnapshotRepository  snapshotRepo,
-                       HandActionRepository    actionRepo,
-                       PlayerRepository        playerRepo,
-                       DeckService             deckService,
+    public HandService(PokerTableRepository     tableRepo,
+                       TableSeatRepository      seatRepo,
+                       HandRepository           handRepo,
+                       HandSnapshotRepository   snapshotRepo,
+                       HandActionRepository     actionRepo,
+                       PlayerRepository         playerRepo,
+                       DeckService              deckService,
                        DecisionEvaluatorService evaluator,
-                       ObjectMapper            objectMapper,
-                       MeterRegistry           meterRegistry) {
+                       ObjectMapper             objectMapper,
+                       MeterRegistry            meterRegistry,
+                       SimpMessagingTemplate    broker) {
         this.tableRepo    = tableRepo;
         this.seatRepo     = seatRepo;
         this.handRepo     = handRepo;
@@ -88,6 +94,7 @@ public class HandService {
         this.deckService  = deckService;
         this.evaluator    = evaluator;
         this.objectMapper = objectMapper;
+        this.broker       = broker;
 
         this.handsStartedCounter  = Counter.builder("poker.hands.started")
                 .description("Total hands started")
@@ -200,6 +207,12 @@ public class HandService {
         tableRepo.save(table);
 
         handsStartedCounter.increment();
+
+        // Broadcast the initial table state to all connected STOMP clients.
+        broker.convertAndSend(
+            WebSocketConfig.TABLE_TOPIC + tableId,
+            TableEvent.from(tableId, hand.getId(), Street.PREFLOP.name(),
+                            initialPot, actionSeatNo, seatStates));
 
         return buildHandResponse(hand, table, seatStates, dealerSeatNo, sbSeatNo, bbSeatNo,
                                  requestingPlayerId);
@@ -338,6 +351,12 @@ public class HandService {
 
         // 11. Compute coaching feedback (uses pre-action snapshot)
         ActionFeedback feedback = evaluator.evaluate(actingSeat, before, req.actionType(), callAmount);
+
+        // Broadcast the updated table state so all STOMP subscribers see the change.
+        UUID tableId = hand.getTable().getId();
+        broker.convertAndSend(
+            WebSocketConfig.TABLE_TOPIC + tableId,
+            TableEvent.from(tableId, handId, newStreet, newPot, nextActionSeat, updatedSeats));
 
         return new ActionResponse(
             handId, nextVersion, newStreet, newPot, nextActionSeat,

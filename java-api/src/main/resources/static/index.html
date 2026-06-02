@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Poker Engine — Live Table</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #1a2a1a;
+      color: #e8f4e8;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      letter-spacing: 0.05em;
+      color: #7ecf7e;
+      margin-bottom: 20px;
+    }
+
+    /* ── Connection panel ── */
+    #connect-panel {
+      background: #243324;
+      border: 1px solid #3a5a3a;
+      border-radius: 8px;
+      padding: 16px 20px;
+      max-width: 520px;
+      margin-bottom: 24px;
+    }
+
+    #connect-panel label {
+      display: block;
+      font-size: 0.8rem;
+      color: #a0c4a0;
+      margin-bottom: 4px;
+    }
+
+    #connect-panel input {
+      width: 100%;
+      padding: 8px 10px;
+      background: #1a2a1a;
+      border: 1px solid #3a5a3a;
+      border-radius: 4px;
+      color: #e8f4e8;
+      font-size: 0.9rem;
+      font-family: monospace;
+      margin-bottom: 12px;
+    }
+
+    #connect-panel input:focus { outline: 1px solid #7ecf7e; }
+
+    button {
+      padding: 8px 18px;
+      background: #3a7a3a;
+      border: none;
+      border-radius: 4px;
+      color: #e8f4e8;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:hover { background: #4a9a4a; }
+    button:disabled { background: #2a4a2a; cursor: default; }
+
+    #disconnect-btn { background: #6a2a2a; margin-left: 8px; }
+    #disconnect-btn:hover { background: #8a3a3a; }
+
+    /* ── Status badge ── */
+    #status {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      letter-spacing: 0.05em;
+      margin-left: 12px;
+      vertical-align: middle;
+    }
+    .status-disconnected { background: #4a2a2a; color: #f08080; }
+    .status-connecting   { background: #4a4a2a; color: #f0d080; }
+    .status-connected    { background: #2a4a2a; color: #80f080; }
+
+    /* ── Table state ── */
+    #table-state { max-width: 720px; }
+
+    .state-header {
+      display: flex;
+      gap: 24px;
+      background: #243324;
+      border: 1px solid #3a5a3a;
+      border-radius: 8px;
+      padding: 14px 20px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+    }
+    .stat-label {
+      font-size: 0.7rem;
+      color: #8aaa8a;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 2px;
+    }
+    .stat-value {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #e8f4e8;
+      font-family: monospace;
+    }
+
+    /* ── Seat grid ── */
+    #seats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+
+    .seat-card {
+      background: #243324;
+      border: 1px solid #3a5a3a;
+      border-radius: 8px;
+      padding: 14px 16px;
+      position: relative;
+    }
+
+    .seat-card.is-acting {
+      border-color: #7ecf7e;
+      box-shadow: 0 0 8px rgba(126, 207, 126, 0.3);
+    }
+
+    .seat-card.is-folded {
+      opacity: 0.45;
+    }
+
+    .seat-number {
+      font-size: 0.7rem;
+      color: #8aaa8a;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+
+    .seat-username {
+      font-size: 1rem;
+      font-weight: bold;
+      color: #e8f4e8;
+      margin-bottom: 8px;
+    }
+
+    .seat-stack {
+      font-size: 0.95rem;
+      font-family: monospace;
+      color: #b8e4b8;
+    }
+
+    .seat-chips::before { content: "🪙 "; }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: bold;
+      letter-spacing: 0.06em;
+      padding: 2px 7px;
+      border-radius: 4px;
+      margin-top: 6px;
+      margin-right: 4px;
+    }
+    .badge-acting  { background: #2a5a2a; color: #7ecf7e; }
+    .badge-folded  { background: #4a2a2a; color: #f08080; }
+    .badge-allin   { background: #2a2a6a; color: #8080f0; }
+
+    /* ── Log ── */
+    #log-section { margin-top: 24px; max-width: 720px; }
+    #log-section h3 { font-size: 0.85rem; color: #8aaa8a; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.08em; }
+    #event-log {
+      background: #0f1a0f;
+      border: 1px solid #2a3a2a;
+      border-radius: 6px;
+      padding: 10px 14px;
+      height: 140px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 0.78rem;
+      color: #80b080;
+    }
+    #event-log .log-ts { color: #5a7a5a; margin-right: 6px; }
+
+    #no-data {
+      color: #5a7a5a;
+      font-style: italic;
+      font-size: 0.9rem;
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>♠ Poker Engine — Live Table</h1>
+
+<!-- ── Connection panel ── -->
+<div id="connect-panel">
+  <label for="table-id-input">Table ID (UUID)</label>
+  <input id="table-id-input" type="text" placeholder="e.g. 550e8400-e29b-41d4-a716-446655440000" spellcheck="false">
+
+  <div style="display:flex; align-items:center;">
+    <button id="connect-btn" onclick="connectToTable()">Connect</button>
+    <button id="disconnect-btn" onclick="disconnectFromTable()" disabled>Disconnect</button>
+    <span id="status" class="status-disconnected">DISCONNECTED</span>
+  </div>
+</div>
+
+<!-- ── Table state ── -->
+<div id="table-state" style="display:none;">
+  <div class="state-header">
+    <div class="stat">
+      <span class="stat-label">Street</span>
+      <span class="stat-value" id="s-street">—</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Pot</span>
+      <span class="stat-value" id="s-pot">—</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Acting Seat</span>
+      <span class="stat-value" id="s-acting">—</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Hand ID</span>
+      <span class="stat-value" id="s-hand" style="font-size:0.7rem; word-break:break-all; max-width:180px;">—</span>
+    </div>
+  </div>
+
+  <div id="seats-grid"></div>
+</div>
+
+<p id="no-data">Waiting for table events — connect and start a hand.</p>
+
+<!-- ── Event log ── -->
+<div id="log-section">
+  <h3>Event Log</h3>
+  <div id="event-log"></div>
+</div>
+
+<!-- ── Libraries (CDN) ── -->
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+
+<script>
+  let stompClient = null;
+  let currentTableId = null;
+  let subscription = null;
+
+  // ── UI helpers ──────────────────────────────────────────────────────────────
+
+  function setStatus(text, cls) {
+    const el = document.getElementById('status');
+    el.textContent = text;
+    el.className = 'status-' + cls;
+  }
+
+  function appendLog(msg) {
+    const log = document.getElementById('event-log');
+    const now = new Date().toLocaleTimeString('en-US', { hour12: false });
+    const line = document.createElement('div');
+    line.innerHTML = `<span class="log-ts">${now}</span>${msg}`;
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;');
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+
+  function renderEvent(ev) {
+    document.getElementById('no-data').style.display = 'none';
+    document.getElementById('table-state').style.display = 'block';
+
+    document.getElementById('s-street').textContent = ev.street ?? '—';
+    document.getElementById('s-pot').textContent   = ev.potChips != null ? '🪙 ' + ev.potChips : '—';
+    document.getElementById('s-acting').textContent = ev.nextActionSeat ?? '—';
+    document.getElementById('s-hand').textContent   = ev.handId ? ev.handId.substring(0, 8) + '…' : '—';
+
+    const grid = document.getElementById('seats-grid');
+    grid.innerHTML = '';
+
+    (ev.seats || []).forEach(seat => {
+      const isActing = seat.seatNo === ev.nextActionSeat;
+      const card = document.createElement('div');
+      card.className = 'seat-card'
+        + (isActing ? ' is-acting' : '')
+        + (seat.folded ? ' is-folded' : '');
+
+      let badges = '';
+      if (isActing) badges += '<span class="badge badge-acting">▶ TO ACT</span>';
+      if (seat.folded)  badges += '<span class="badge badge-folded">FOLDED</span>';
+      if (seat.allIn)   badges += '<span class="badge badge-allin">ALL-IN</span>';
+
+      card.innerHTML = `
+        <div class="seat-number">Seat ${escHtml(seat.seatNo)}</div>
+        <div class="seat-username">${escHtml(seat.username)}</div>
+        <div class="seat-stack seat-chips">${escHtml(seat.stackChips)}</div>
+        <div>${badges}</div>
+      `;
+      grid.appendChild(card);
+    });
+
+    appendLog(
+      `[${escHtml(ev.street)}] pot=${escHtml(ev.potChips)} ` +
+      `actingSeat=${escHtml(ev.nextActionSeat)} ` +
+      `seats=[${(ev.seats||[]).map(s => s.username + ':' + s.stackChips).join(', ')}]`
+    );
+  }
+
+  // ── STOMP lifecycle ─────────────────────────────────────────────────────────
+
+  function connectToTable() {
+    const tableId = document.getElementById('table-id-input').value.trim();
+    if (!tableId) { alert('Please enter a Table ID.'); return; }
+    currentTableId = tableId;
+
+    setStatus('CONNECTING…', 'connecting');
+    document.getElementById('connect-btn').disabled = true;
+
+    stompClient = new StompJs.Client({
+      webSocketFactory: () => new SockJS('/ws'),
+      reconnectDelay: 5000,
+
+      onConnect: function(frame) {
+        setStatus('CONNECTED', 'connected');
+        document.getElementById('disconnect-btn').disabled = false;
+        appendLog(`Connected to broker. Frame: ${escHtml(frame.command)}`);
+
+        subscription = stompClient.subscribe(
+          '/topic/tables/' + tableId,
+          function(msg) {
+            try {
+              const ev = JSON.parse(msg.body);
+              renderEvent(ev);
+            } catch (e) {
+              appendLog('Parse error: ' + e.message);
+            }
+          }
+        );
+        appendLog(`Subscribed to /topic/tables/${escHtml(tableId)}`);
+      },
+
+      onStompError: function(frame) {
+        appendLog('STOMP error: ' + escHtml(frame.headers['message'] || '?'));
+        setStatus('ERROR', 'disconnected');
+      },
+
+      onDisconnect: function() {
+        setStatus('DISCONNECTED', 'disconnected');
+        document.getElementById('connect-btn').disabled = false;
+        document.getElementById('disconnect-btn').disabled = true;
+        appendLog('Disconnected.');
+      },
+
+      onWebSocketError: function(evt) {
+        appendLog('WebSocket error — is the server running?');
+        setStatus('DISCONNECTED', 'disconnected');
+        document.getElementById('connect-btn').disabled = false;
+      }
+    });
+
+    stompClient.activate();
+  }
+
+  function disconnectFromTable() {
+    if (subscription) { subscription.unsubscribe(); subscription = null; }
+    if (stompClient)  { stompClient.deactivate(); stompClient = null; }
+    setStatus('DISCONNECTED', 'disconnected');
+    document.getElementById('connect-btn').disabled = false;
+    document.getElementById('disconnect-btn').disabled = true;
+    appendLog('Disconnected by user.');
+  }
+</script>
+</body>
+</html>
