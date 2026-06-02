@@ -27,6 +27,8 @@ import com.poker.exception.ResourceNotFoundException;
 import com.poker.web.dto.ActionRequest;
 import com.poker.web.dto.ActionResponse;
 import com.poker.web.dto.HandResponse;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,6 +62,13 @@ public class HandService {
     private final DecisionEvaluatorService evaluator;
     private final ObjectMapper            objectMapper;
 
+    /** Incremented once per {@link #startHand} call that succeeds. */
+    private final Counter handsStartedCounter;
+    /** Incremented when a hand ends because all others folded. */
+    private final Counter handsFoldedCounter;
+    /** Incremented when a hand reaches showdown. */
+    private final Counter handsShowdownCounter;
+
     public HandService(PokerTableRepository    tableRepo,
                        TableSeatRepository     seatRepo,
                        HandRepository          handRepo,
@@ -68,7 +77,8 @@ public class HandService {
                        PlayerRepository        playerRepo,
                        DeckService             deckService,
                        DecisionEvaluatorService evaluator,
-                       ObjectMapper            objectMapper) {
+                       ObjectMapper            objectMapper,
+                       MeterRegistry           meterRegistry) {
         this.tableRepo    = tableRepo;
         this.seatRepo     = seatRepo;
         this.handRepo     = handRepo;
@@ -78,6 +88,18 @@ public class HandService {
         this.deckService  = deckService;
         this.evaluator    = evaluator;
         this.objectMapper = objectMapper;
+
+        this.handsStartedCounter  = Counter.builder("poker.hands.started")
+                .description("Total hands started")
+                .register(meterRegistry);
+        this.handsFoldedCounter   = Counter.builder("poker.hands.finished")
+                .description("Hands finished when all others folded")
+                .tag("reason", "folded")
+                .register(meterRegistry);
+        this.handsShowdownCounter = Counter.builder("poker.hands.finished")
+                .description("Hands finished at showdown")
+                .tag("reason", "showdown")
+                .register(meterRegistry);
     }
 
     // ── Start hand ────────────────────────────────────────────────────────────
@@ -177,6 +199,8 @@ public class HandService {
         table.setStatus(TableStatus.IN_HAND);
         tableRepo.save(table);
 
+        handsStartedCounter.increment();
+
         return buildHandResponse(hand, table, seatStates, dealerSeatNo, sbSeatNo, bbSeatNo,
                                  requestingPlayerId);
     }
@@ -270,12 +294,14 @@ public class HandService {
             // hand.getTable() is already loaded (same transaction); no extra DB round-trip needed
             hand.getTable().setStatus(TableStatus.WAITING);
             tableRepo.save(hand.getTable());
+            handsFoldedCounter.increment();
 
         } else if (roundDone) {
             Street current = Street.valueOf(before.street());
             if (current == Street.RIVER || current == Street.SHOWDOWN) {
                 hand.setStatus(HandStatus.SHOWDOWN);
                 newStreet = Street.SHOWDOWN.name();
+                handsShowdownCounter.increment();
             } else {
                 Street next = current.next();
                 newStreet       = next.name();

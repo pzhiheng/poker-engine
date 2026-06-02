@@ -18,6 +18,7 @@ import com.poker.domain.repository.TableSeatRepository;
 import com.poker.exception.BusinessRuleException;
 import com.poker.exception.ResourceNotFoundException;
 import com.poker.web.dto.HandResponse;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -57,6 +58,8 @@ class HandServiceTest {
 
     // Real ObjectMapper for JSON serialisation in snapshots
     final ObjectMapper objectMapper = new ObjectMapper();
+    // Real meter registry so we can assert counter values
+    final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
 
     HandService service;
 
@@ -76,7 +79,8 @@ class HandServiceTest {
     void setUp() throws Exception {
         service = new HandService(
             tableRepo, seatRepo, handRepo, snapshotRepo,
-            actionRepo, playerRepo, deckService, evaluator, objectMapper);
+            actionRepo, playerRepo, deckService, evaluator, objectMapper,
+            meterRegistry);
 
         tableId   = UUID.randomUUID();
         playerAId = UUID.randomUUID();
@@ -294,6 +298,39 @@ class HandServiceTest {
         assertThat(node.get("board").isArray()).isTrue();
         assertThat(node.get("seats").isArray()).isTrue();
         assertThat(node.get("seats").size()).isEqualTo(2);
+    }
+
+    // ── Micrometer counter tests ──────────────────────────────────────────────
+
+    @Test
+    void startHand_incrementsHandsStartedCounter() {
+        TableSeat seatA = newSeat(table, playerA, 1, 500);
+        TableSeat seatB = newSeat(table, playerB, 2, 500);
+        when(tableRepo.findById(tableId)).thenReturn(Optional.of(table));
+        when(handRepo.findByTableIdAndStatusIn(eq(tableId), any())).thenReturn(Optional.empty());
+        when(seatRepo.findByTableIdOrderBySeatNoAsc(tableId)).thenReturn(List.of(seatA, seatB));
+        stubDeck();
+
+        service.startHand(tableId, playerAId);
+
+        assertThat(meterRegistry.counter("poker.hands.started").count()).isEqualTo(1.0);
+    }
+
+    @Test
+    void startHand_calledTwice_counterReflectsBothStarts() {
+        TableSeat seatA = newSeat(table, playerA, 1, 500);
+        TableSeat seatB = newSeat(table, playerB, 2, 500);
+        when(tableRepo.findById(tableId)).thenReturn(Optional.of(table));
+        when(handRepo.findByTableIdAndStatusIn(eq(tableId), any())).thenReturn(Optional.empty());
+        when(seatRepo.findByTableIdOrderBySeatNoAsc(tableId)).thenReturn(List.of(seatA, seatB));
+        stubDeck();
+
+        service.startHand(tableId, playerAId);
+        // Reset for the second call
+        table.setStatus(TableStatus.WAITING);
+        service.startHand(tableId, playerAId);
+
+        assertThat(meterRegistry.counter("poker.hands.started").count()).isEqualTo(2.0);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

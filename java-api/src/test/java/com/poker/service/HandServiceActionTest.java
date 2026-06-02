@@ -23,6 +23,7 @@ import com.poker.exception.BusinessRuleException;
 import com.poker.exception.ResourceNotFoundException;
 import com.poker.web.dto.ActionRequest;
 import com.poker.web.dto.ActionResponse;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -79,7 +80,8 @@ class HandServiceActionTest {
     @BeforeEach
     void setUp() throws Exception {
         service = new HandService(tableRepo, seatRepo, handRepo, snapshotRepo,
-            actionRepo, playerRepo, deckService, evaluator, objectMapper);
+            actionRepo, playerRepo, deckService, evaluator, objectMapper,
+            new SimpleMeterRegistry());
 
         handId    = UUID.randomUUID();
         playerAId = UUID.randomUUID();

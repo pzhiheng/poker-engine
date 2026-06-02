@@ -72,6 +72,8 @@ services:
       GO_ODDS_HOST:    go-odds
       GO_ODDS_PORT:    "50051"
       GO_ODDS_TRIALS:  "10000"
+      # Structured JSON logs for Docker / log-aggregator consumption (ECS format)
+      LOG_FORMAT: "ecs"
     depends_on:
       postgres:
         condition: service_healthy
