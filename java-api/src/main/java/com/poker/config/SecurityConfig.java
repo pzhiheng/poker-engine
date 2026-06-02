@@ -50,6 +50,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/tables/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/players/**").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
+                // Swagger UI + OpenAPI spec — public so reviewers can explore the API
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**",
+                                 "/swagger-ui.html").permitAll()
                 .anyRequest().hasRole("PLAYER")
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

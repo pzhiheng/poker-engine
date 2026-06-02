@@ -9,6 +9,11 @@ import com.poker.service.PlayerProfileService;
 import com.poker.service.StatsComputationService;
 import com.poker.web.dto.PlayerProfileResponse;
 import com.poker.web.dto.PlayerStatsResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,6 +33,8 @@ import java.util.UUID;
  * <p>All endpoints are public (no JWT required) — stats are not sensitive
  * and keeping them accessible without login reduces onboarding friction.
  */
+@Tag(name = "Analytics", description = "Player stats and coaching profile — VPIP, PFR, aggression factor, player type and suggestions")
+@SecurityRequirements   // all analytics endpoints are public
 @RestController
 @RequestMapping("/players")
 public class AnalyticsController {
@@ -44,14 +51,13 @@ public class AnalyticsController {
         this.profileService = profileService;
     }
 
-    /**
-     * Returns computed statistics for the given player.
-     *
-     * @param playerId  UUID of the player
-     * @return 200 with {@link PlayerStatsResponse}; 404 if not found
-     */
+    @Operation(summary = "Get player stats",
+               description = "Computes VPIP, PFR, 3-bet %, aggression factor, WTSD %, and avg profit per hand from the player's full hand history.")
+    @ApiResponse(responseCode = "200", description = "Stats computed successfully")
+    @ApiResponse(responseCode = "404", description = "Player not found")
     @GetMapping("/{playerId}/stats")
-    public ResponseEntity<PlayerStatsResponse> getStats(@PathVariable UUID playerId) {
+    public ResponseEntity<PlayerStatsResponse> getStats(
+            @Parameter(description = "Player UUID") @PathVariable UUID playerId) {
         Player player = playerRepo.findById(playerId)
             .orElseThrow(() -> new ResourceNotFoundException("Player", playerId));
 
@@ -61,15 +67,17 @@ public class AnalyticsController {
         );
     }
 
-    /**
-     * Returns a full coaching profile: stats, player-type classification,
-     * and a list of rule-based coaching suggestions.
-     *
-     * @param playerId  UUID of the player
-     * @return 200 with {@link PlayerProfileResponse}; 404 if not found
-     */
+    @Operation(summary = "Get coaching profile",
+               description = """
+                   Returns stats + player-type classification (TAG / LAG / NIT / CALLING_STATION / FISH / MANIAC)
+                   + a ranked list of coaching suggestions (INFO / WARNING / CRITICAL) derived from observed leaks.
+                   Requires ≥ 30 hands for a reliable classification; fewer hands returns type UNKNOWN with a sample-size warning.
+                   """)
+    @ApiResponse(responseCode = "200", description = "Profile built successfully")
+    @ApiResponse(responseCode = "404", description = "Player not found")
     @GetMapping("/{playerId}/profile")
-    public ResponseEntity<PlayerProfileResponse> getProfile(@PathVariable UUID playerId) {
+    public ResponseEntity<PlayerProfileResponse> getProfile(
+            @Parameter(description = "Player UUID") @PathVariable UUID playerId) {
         PlayerProfile profile = profileService.buildProfile(playerId);
         return ResponseEntity.ok(PlayerProfileResponse.from(profile));
     }
