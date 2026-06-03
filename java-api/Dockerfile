@@ -3,6 +3,12 @@
 # layer so source-only changes don't re-download everything.
 FROM eclipse-temurin:21-jdk-alpine AS deps
 
+# gcompat provides glibc compatibility shims on Alpine (musl libc).
+# Required because protoc-gen-grpc-java native binaries for linux/arm64
+# are glibc-linked; without gcompat they cannot execute on musl Alpine
+# (affects Apple Silicon + linux/aarch64 Docker builds).
+RUN apk add --no-cache gcompat
+
 WORKDIR /build
 
 COPY .mvn/ .mvn/
