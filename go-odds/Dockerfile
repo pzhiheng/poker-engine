@@ -1,6 +1,9 @@
 # ── Stage 1: build ────────────────────────────────────────────────────────────
-# Use the same minor version as go.mod to avoid toolchain surprises.
-FROM golang:1.26-alpine AS builder
+# Use Amazon ECR Public as the pull source.  It mirrors Docker Hub official
+# images without the anonymous rate limits that cause CI timeouts.
+# Local alternative: docker build --build-arg BASE=golang:1.26-alpine .
+ARG BASE=public.ecr.aws/docker/library/golang:1.26-alpine
+FROM ${BASE} AS builder
 
 # Install certificates so gRPC TLS works (not needed with plaintext, but
 # included so the image is production-ready without modification).
