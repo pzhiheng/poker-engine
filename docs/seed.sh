@@ -56,8 +56,15 @@ curl -sf -X POST "$BASE/tables/$TABLE_ID/seats" \
 
 # ── 6. Start a hand ───────────────────────────────────────────────────────────
 echo "==> [6/6] Starting hand..."
-hand=$(curl -sf -X POST "$BASE/tables/$TABLE_ID/hands" \
+hand=$(curl -s -o /tmp/hand_response.json -w "%{http_code}" \
+  -X POST "$BASE/tables/$TABLE_ID/hands" \
   -H "Authorization: Bearer $ALICE_TOKEN")
+echo "    HTTP $hand"
+if [ "$hand" != "201" ]; then
+  echo "    ERROR body: $(cat /tmp/hand_response.json)"
+  exit 1
+fi
+hand=$(cat /tmp/hand_response.json)
 HAND_ID=$(echo "$hand" | jq -r '.handId')
 echo "    handId  = $HAND_ID"
 echo "    street  = $(echo "$hand" | jq -r '.street')"
