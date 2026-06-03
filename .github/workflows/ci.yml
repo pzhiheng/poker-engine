@@ -143,8 +143,7 @@ jobs:
           java \
             -XX:+UseContainerSupport \
             -XX:MaxRAMPercentage=75.0 \
-            -jar java-api/target/java-api-0.0.1-SNAPSHOT.jar \
-            > /tmp/java-api.log 2>&1 &
+            -jar java-api/target/java-api-0.0.1-SNAPSHOT.jar &
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/poker
           SPRING_DATASOURCE_USERNAME: poker
@@ -163,7 +162,3 @@ jobs:
       # ── Smoke test ─────────────────────────────────────────────────────────
       - name: Run seed script
         run: POKER_API=http://localhost:8080 docs/seed.sh
-
-      - name: Dump java-api log on failure
-        if: failure()
-        run: grep -E "ERROR|Exception|Caused by|at com\.poker" /tmp/java-api.log | head -60 || cat /tmp/java-api.log | tail -80
