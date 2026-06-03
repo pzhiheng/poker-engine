@@ -189,6 +189,33 @@ curl -sX POST http://localhost:8080/import/hands \
 curl -s "http://localhost:8080/import/hands/{importId}" | jq .
 ```
 
+### 7 · Live table viewer (browser)
+
+Open **http://localhost:8080** in a browser.
+Paste any `tableId` UUID, click **Connect**, and the page subscribes to
+`/topic/tables/{tableId}` via SockJS + STOMP.  
+Every hand start and every recorded action broadcasts a `TableEvent` — the page
+updates immediately with the current street, pot, and per-seat stacks.
+
+```
+ws://localhost:8080/ws   →   /topic/tables/{tableId}
+```
+
+Payload (broadcast-safe — no hole cards):
+```json
+{
+  "tableId": "...",
+  "handId":  "...",
+  "street":  "FLOP",
+  "potChips": 30,
+  "nextActionSeat": 2,
+  "seats": [
+    { "seatNo": 1, "username": "alice", "stackChips": 490, "folded": false, "allIn": false },
+    { "seatNo": 2, "username": "bob",   "stackChips": 485, "folded": false, "allIn": false }
+  ]
+}
+```
+
 ---
 
 ## Full API surface
@@ -203,6 +230,7 @@ curl -s "http://localhost:8080/import/hands/{importId}" | jq .
 | POST | `/tables/{id}/seats` | ✅ | Seat a player (buy-in) |
 | POST | `/tables/{id}/hands` | ✅ | Start a hand |
 | POST | `/hands/{id}/actions` | ✅ | Record action + get coaching feedback |
+| WS | `/ws` (SockJS) | ❌ | STOMP endpoint; subscribe `/topic/tables/{id}` |
 | GET | `/players/{id}/stats` | ❌ | VPIP, PFR, aggression factor, … |
 | GET | `/players/{id}/profile` | ❌ | Player type + coaching suggestions |
 | POST | `/import/hands` | ✅ | Upload PokerStars / GGPoker history |
@@ -261,6 +289,7 @@ poker-engine/
 │   │       └── dto/                 Request / response records
 │   └── src/main/resources/
 │       ├── application.properties   All config (env-var overridable)
+│       ├── static/index.html        Live table viewer (SockJS + STOMP)
 │       └── db/migration/            V1__init.sql + V2__analytics.sql (Flyway)
 │
 ├── go-odds/                         Go 1.26 gRPC + HTTP service

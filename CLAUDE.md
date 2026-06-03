@@ -113,14 +113,14 @@ The platform is a **practice table with a built-in coach**: the engine records h
 Week 1: ████████████████████████  Days 1-7 complete ✅
 Week 2: ████████████████████████  Days 8-14 complete ✅
 Week 3: ████████████████████████  Days 15-21 complete ✅
-Week 4: ████████████████░░░░░░░░  Days 22-28 complete ✅ | Days 29-30 pending
+Week 4: ████████████████████████  Days 22-30 complete ✅  🎉 v1.0.0 tagged
 ```
 
 **Test count at last push: 269 Java + all Go tests, 0 failures**
 
 ---
 
-## Key API Surface (so far)
+## Key API Surface
 
 | Method | Path | Auth | Status |
 |--------|------|------|--------|
@@ -130,9 +130,13 @@ Week 4: ████████████████░░░░░░░░
 | GET | `/tables/{id}` | ❌ | ✅ Done |
 | POST | `/tables` | ✅ | ✅ Done |
 | POST | `/tables/{id}/seats` | ✅ | ✅ Done |
-| POST | `/tables/{id}/hands` | ✅ | Day 8 |
-| POST | `/hands/{id}/actions` | ✅ | Day 9 |
-| WS | `/topic/tables/{id}` | ✅ | Day 11 |
+| POST | `/tables/{id}/hands` | ✅ | ✅ Done |
+| POST | `/hands/{id}/actions` | ✅ | ✅ Done |
+| GET | `/players/{id}/stats` | ❌ | ✅ Done |
+| GET | `/players/{id}/profile` | ❌ | ✅ Done |
+| POST | `/import/hands` | ✅ | ✅ Done |
+| GET | `/import/hands` | ✅ | ✅ Done |
+| WS | `/ws` → `/topic/tables/{id}` | ❌ | ✅ Done |
 
 ---
 
