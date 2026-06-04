@@ -27,8 +27,12 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
         ./cmd/server
 
 # ── Stage 2: runtime ──────────────────────────────────────────────────────────
-# distroless/static has no shell, no package manager — minimal attack surface.
-FROM gcr.io/distroless/static:nonroot AS runtime
+# Alpine (musl) works fine because the binary is CGO_ENABLED=0 / fully static.
+# Alpine includes busybox wget, which is required by the Docker Compose
+# healthcheck (distroless/static has no shell or wget so CMD-SHELL fails).
+FROM public.ecr.aws/docker/library/alpine:3.21 AS runtime
+
+RUN addgroup -S gogrp && adduser -S gouser -G gogrp
 
 WORKDIR /
 
@@ -39,7 +43,6 @@ COPY --from=builder /go-odds /go-odds
 # gRPC service port: 50051
 EXPOSE 8081 50051
 
-# Run as non-root user (uid 65532, provided by distroless/static:nonroot).
-USER nonroot:nonroot
+USER gouser:gogrp
 
 ENTRYPOINT ["/go-odds"]
