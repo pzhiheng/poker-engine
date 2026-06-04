@@ -1,13 +1,9 @@
 # ── Stage 1: dependency resolution ────────────────────────────────────────────
-# Cache Maven deps, plugin binaries, and generated proto stubs in a separate
-# layer so source-only changes don't re-download everything.
-FROM eclipse-temurin:21-jdk-alpine AS deps
-
-# gcompat provides glibc compatibility shims on Alpine (musl libc).
-# Required because protoc-gen-grpc-java native binaries for linux/arm64
-# are glibc-linked; without gcompat they cannot execute on musl Alpine
-# (affects Apple Silicon + linux/aarch64 Docker builds).
-RUN apk add --no-cache gcompat
+# Use the Debian-based JDK (not Alpine) so that protoc-gen-grpc-java native
+# binaries — which are glibc + libstdc++ linked — can execute on all
+# architectures including ARM64 (Apple Silicon).  Alpine's musl libc +
+# gcompat shim is not sufficient for C++ binaries that use std::system_error.
+FROM eclipse-temurin:21-jdk AS deps
 
 WORKDIR /build
 
@@ -34,9 +30,9 @@ COPY src/ src/
 RUN ./mvnw -B --no-transfer-progress package -DskipTests -q
 
 # ── Stage 3: runtime ──────────────────────────────────────────────────────────
-FROM eclipse-temurin:21-jre-alpine AS runtime
+FROM eclipse-temurin:21-jre AS runtime
 
-RUN addgroup -S poker && adduser -S poker -G poker
+RUN groupadd -r poker && useradd -r -g poker poker
 
 WORKDIR /app
 
