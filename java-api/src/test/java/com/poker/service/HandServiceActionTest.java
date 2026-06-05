@@ -119,7 +119,8 @@ class HandServiceActionTest {
         when(playerRepo.findById(playerAId)).thenReturn(Optional.of(playerA));
         when(evaluator.evaluate(any(), any(), any(), anyInt()))
             .thenReturn(new ActionFeedback(ActionType.CALL, ActionType.RAISE,
-                0.62, 0.25, FeedbackQuality.SUBOPTIMAL, "Raising for value would be stronger."));
+                0.62, 0.25, FeedbackQuality.SUBOPTIMAL, "Raising for value would be stronger.",
+                List.of()));
     }
 
     // ── Happy paths ───────────────────────────────────────────────────────────

@@ -18,6 +18,7 @@ public record HandResponse(
         int          dealerSeat,
         int          sbSeat,
         int          bbSeat,
+        List<String> boardCards,    // 0 (preflop), 3 (flop), 4 (turn), or 5 (river) cards
         List<String> myHoleCards,   // null if requesting player is not seated
         List<SeatView> seats
 ) {

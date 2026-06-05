@@ -3,390 +3,883 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Poker Engine — Live Table</title>
+  <title>Poker Engine</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: "Segoe UI", Arial, sans-serif;
-      background: #1a2a1a;
-      color: #e8f4e8;
-      min-height: 100vh;
-      padding: 24px;
-    }
-
-    h1 {
-      font-size: 1.5rem;
-      letter-spacing: 0.05em;
-      color: #7ecf7e;
-      margin-bottom: 20px;
-    }
-
-    /* ── Connection panel ── */
-    #connect-panel {
-      background: #243324;
-      border: 1px solid #3a5a3a;
-      border-radius: 8px;
-      padding: 16px 20px;
-      max-width: 520px;
-      margin-bottom: 24px;
-    }
-
-    #connect-panel label {
-      display: block;
-      font-size: 0.8rem;
-      color: #a0c4a0;
-      margin-bottom: 4px;
-    }
-
-    #connect-panel input {
-      width: 100%;
-      padding: 8px 10px;
-      background: #1a2a1a;
-      border: 1px solid #3a5a3a;
-      border-radius: 4px;
-      color: #e8f4e8;
-      font-size: 0.9rem;
-      font-family: monospace;
-      margin-bottom: 12px;
-    }
-
-    #connect-panel input:focus { outline: 1px solid #7ecf7e; }
-
-    button {
-      padding: 8px 18px;
-      background: #3a7a3a;
-      border: none;
-      border-radius: 4px;
-      color: #e8f4e8;
-      font-size: 0.9rem;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    button:hover { background: #4a9a4a; }
-    button:disabled { background: #2a4a2a; cursor: default; }
-
-    #disconnect-btn { background: #6a2a2a; margin-left: 8px; }
-    #disconnect-btn:hover { background: #8a3a3a; }
-
-    /* ── Status badge ── */
-    #status {
-      display: inline-block;
-      padding: 3px 10px;
-      border-radius: 12px;
-      font-size: 0.75rem;
-      font-weight: bold;
-      letter-spacing: 0.05em;
-      margin-left: 12px;
-      vertical-align: middle;
-    }
-    .status-disconnected { background: #4a2a2a; color: #f08080; }
-    .status-connecting   { background: #4a4a2a; color: #f0d080; }
-    .status-connected    { background: #2a4a2a; color: #80f080; }
-
-    /* ── Table state ── */
-    #table-state { max-width: 720px; }
-
-    .state-header {
-      display: flex;
-      gap: 24px;
-      background: #243324;
-      border: 1px solid #3a5a3a;
-      border-radius: 8px;
-      padding: 14px 20px;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-    }
-
-    .stat {
-      display: flex;
-      flex-direction: column;
-    }
-    .stat-label {
-      font-size: 0.7rem;
-      color: #8aaa8a;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 2px;
-    }
-    .stat-value {
-      font-size: 1.1rem;
-      font-weight: bold;
-      color: #e8f4e8;
-      font-family: monospace;
-    }
-
-    /* ── Seat grid ── */
-    #seats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 12px;
-    }
-
-    .seat-card {
-      background: #243324;
-      border: 1px solid #3a5a3a;
-      border-radius: 8px;
-      padding: 14px 16px;
+    .poker-table {
+      background: radial-gradient(ellipse at center, #2d6a4f 0%, #1b4332 65%, #0a2818 100%);
+      border-radius: 50%;
+      border: 10px solid #6b4c11;
+      box-shadow: 0 0 0 4px #4a3010, inset 0 0 80px rgba(0,0,0,0.6);
       position: relative;
     }
-
-    .seat-card.is-acting {
-      border-color: #7ecf7e;
-      box-shadow: 0 0 8px rgba(126, 207, 126, 0.3);
-    }
-
-    .seat-card.is-folded {
-      opacity: 0.45;
-    }
-
-    .seat-number {
-      font-size: 0.7rem;
-      color: #8aaa8a;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 4px;
-    }
-
-    .seat-username {
-      font-size: 1rem;
-      font-weight: bold;
-      color: #e8f4e8;
-      margin-bottom: 8px;
-    }
-
-    .seat-stack {
-      font-size: 0.95rem;
-      font-family: monospace;
-      color: #b8e4b8;
-    }
-
-    .seat-chips::before { content: "🪙 "; }
-
-    .badge {
-      display: inline-block;
-      font-size: 0.65rem;
-      font-weight: bold;
-      letter-spacing: 0.06em;
-      padding: 2px 7px;
+    .card {
+      display: inline-flex;
+      flex-direction: column;
+      justify-content: space-between;
+      width: 32px; height: 46px;
+      background: #fff;
       border-radius: 4px;
-      margin-top: 6px;
-      margin-right: 4px;
+      border: 1px solid #ccc;
+      box-shadow: 1px 2px 3px rgba(0,0,0,0.35);
+      font-size: 11px; font-weight: bold;
+      padding: 2px 3px;
+      user-select: none; line-height: 1;
     }
-    .badge-acting  { background: #2a5a2a; color: #7ecf7e; }
-    .badge-folded  { background: #4a2a2a; color: #f08080; }
-    .badge-allin   { background: #2a2a6a; color: #8080f0; }
-
-    /* ── Log ── */
-    #log-section { margin-top: 24px; max-width: 720px; }
-    #log-section h3 { font-size: 0.85rem; color: #8aaa8a; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.08em; }
-    #event-log {
-      background: #0f1a0f;
-      border: 1px solid #2a3a2a;
-      border-radius: 6px;
-      padding: 10px 14px;
-      height: 140px;
-      overflow-y: auto;
-      font-family: monospace;
-      font-size: 0.78rem;
-      color: #80b080;
+    .card.red  { color: #dc2626; }
+    .card.black { color: #111; }
+    .card-back {
+      display: inline-flex; width: 32px; height: 46px;
+      border-radius: 4px;
+      background: repeating-linear-gradient(45deg,#1e3a8a,#1e3a8a 4px,#1e40af 4px,#1e40af 8px);
+      border: 1px solid #1e3a8a;
+      box-shadow: 1px 2px 3px rgba(0,0,0,0.35);
     }
-    #event-log .log-ts { color: #5a7a5a; margin-right: 6px; }
-
-    #no-data {
-      color: #5a7a5a;
-      font-style: italic;
-      font-size: 0.9rem;
-      margin-top: 24px;
+    .card-placeholder {
+      display: inline-flex; width: 32px; height: 46px;
+      border-radius: 4px; border: 2px dashed #374151;
     }
+    .seat-acting { animation: pulse-glow 1.4s ease-in-out infinite; }
+    @keyframes pulse-glow {
+      0%,100% { box-shadow: 0 0 0 0 rgba(34,197,94,.5); }
+      50%      { box-shadow: 0 0 0 10px rgba(34,197,94,0); }
+    }
+    .feedback-slide { animation: slideUp .3s ease-out; }
+    @keyframes slideUp {
+      from { transform: translateY(16px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    .tab-active { border-bottom: 2px solid #22c55e; color: #22c55e !important; }
+    body { background: #030712; }
   </style>
 </head>
-<body>
+<body class="text-gray-100 min-h-screen font-sans">
 
-<h1>♠ Poker Engine — Live Table</h1>
-
-<!-- ── Connection panel ── -->
-<div id="connect-panel">
-  <label for="table-id-input">Table ID (UUID)</label>
-  <input id="table-id-input" type="text" placeholder="e.g. 550e8400-e29b-41d4-a716-446655440000" spellcheck="false">
-
-  <div style="display:flex; align-items:center;">
-    <button id="connect-btn" onclick="connectToTable()">Connect</button>
-    <button id="disconnect-btn" onclick="disconnectFromTable()" disabled>Disconnect</button>
-    <span id="status" class="status-disconnected">DISCONNECTED</span>
+<!-- ═══════ AUTH ═══════ -->
+<div id="view-auth" class="hidden min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-sm bg-gray-900 rounded-2xl border border-gray-800 p-8 shadow-2xl">
+    <h1 class="text-2xl font-bold text-green-400 text-center mb-2">♠ Poker Engine</h1>
+    <p class="text-center text-gray-500 text-sm mb-6">Practice. Play. Get coached.</p>
+    <div class="flex border-b border-gray-700 mb-6">
+      <button id="tab-login"    onclick="switchTab('login')"
+        class="flex-1 pb-3 text-sm font-medium tab-active">Login</button>
+      <button id="tab-register" onclick="switchTab('register')"
+        class="flex-1 pb-3 text-sm font-medium text-gray-500">Register</button>
+    </div>
+    <form onsubmit="submitAuth(event)">
+      <div class="mb-4">
+        <label class="block text-xs text-gray-400 mb-1">Username</label>
+        <input id="auth-user" type="text" autocomplete="username" required placeholder="alice"
+          class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm
+                 focus:outline-none focus:border-green-500 transition-colors">
+      </div>
+      <div class="mb-5">
+        <label class="block text-xs text-gray-400 mb-1">Password</label>
+        <input id="auth-pass" type="password" autocomplete="current-password" required
+          placeholder="••••••••"
+          class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm
+                 focus:outline-none focus:border-green-500 transition-colors">
+      </div>
+      <div id="auth-err" class="hidden mb-4 p-3 bg-red-950 border border-red-800 rounded-xl text-red-300 text-sm"></div>
+      <button type="submit" id="auth-btn"
+        class="w-full bg-green-600 hover:bg-green-500 rounded-xl py-2.5 text-sm font-semibold transition-colors">
+        Login
+      </button>
+    </form>
   </div>
 </div>
 
-<!-- ── Table state ── -->
-<div id="table-state" style="display:none;">
-  <div class="state-header">
-    <div class="stat">
-      <span class="stat-label">Street</span>
-      <span class="stat-value" id="s-street">—</span>
+<!-- ═══════ LOBBY ═══════ -->
+<div id="view-lobby" class="hidden min-h-screen flex flex-col">
+  <header class="sticky top-0 z-10 bg-gray-950/95 backdrop-blur border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+    <h1 class="text-lg font-bold text-green-400">♠ Poker Engine</h1>
+    <div class="flex items-center gap-3">
+      <span id="lobby-user" class="text-sm text-gray-300"></span>
+      <button onclick="navProfile(app.playerId)"
+        class="text-xs bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg px-3 py-1.5 transition-colors">
+        My Profile
+      </button>
+      <button onclick="logout()" class="text-xs text-gray-500 hover:text-white transition-colors">
+        Logout
+      </button>
     </div>
-    <div class="stat">
-      <span class="stat-label">Pot</span>
-      <span class="stat-value" id="s-pot">—</span>
+  </header>
+  <main class="flex-1 p-6 max-w-5xl mx-auto w-full">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-xl font-semibold">Tables</h2>
+      <button onclick="toggleCreateForm()"
+        class="bg-green-600 hover:bg-green-500 rounded-xl px-4 py-2 text-sm font-semibold transition-colors">
+        + New Table
+      </button>
     </div>
-    <div class="stat">
-      <span class="stat-label">Acting Seat</span>
-      <span class="stat-value" id="s-acting">—</span>
+
+    <!-- filter row -->
+    <div class="flex gap-2 mb-5">
+      <button id="f-all"      onclick="setFilter('all')"      class="text-xs rounded-full px-3 py-1 bg-green-700 text-white">All</button>
+      <button id="f-WAITING"  onclick="setFilter('WAITING')"  class="text-xs rounded-full px-3 py-1 bg-gray-800 text-gray-400 hover:bg-gray-700">Waiting</button>
+      <button id="f-IN_HAND"  onclick="setFilter('IN_HAND')"  class="text-xs rounded-full px-3 py-1 bg-gray-800 text-gray-400 hover:bg-gray-700">In Hand</button>
     </div>
-    <div class="stat">
-      <span class="stat-label">Hand ID</span>
-      <span class="stat-value" id="s-hand" style="font-size:0.7rem; word-break:break-all; max-width:180px;">—</span>
+
+    <!-- create table form -->
+    <div id="create-form" class="hidden mb-6 bg-gray-900 border border-gray-700 rounded-2xl p-5">
+      <h3 class="font-semibold text-sm mb-4">New Table</h3>
+      <div class="grid sm:grid-cols-3 gap-4">
+        <div class="sm:col-span-1">
+          <label class="block text-xs text-gray-400 mb-1">Name</label>
+          <input id="c-name" type="text" placeholder="My Table"
+            class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-500">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Small Blind</label>
+          <input id="c-sb" type="number" placeholder="5" min="1"
+            class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-500">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Big Blind</label>
+          <input id="c-bb" type="number" placeholder="10" min="2"
+            class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-500">
+        </div>
+      </div>
+      <div id="c-err" class="hidden mt-3 text-sm text-red-400"></div>
+      <div class="flex gap-3 mt-4">
+        <button onclick="createTable()"
+          class="bg-green-600 hover:bg-green-500 rounded-xl px-4 py-2 text-sm font-semibold transition-colors">Create</button>
+        <button onclick="toggleCreateForm()"
+          class="bg-gray-800 hover:bg-gray-700 rounded-xl px-4 py-2 text-sm transition-colors">Cancel</button>
+      </div>
+    </div>
+
+    <!-- tables grid -->
+    <div id="tables-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    <p id="no-tables" class="hidden text-gray-600 text-sm text-center mt-16">No tables yet — create one!</p>
+  </main>
+</div>
+
+<!-- ═══════ TABLE ═══════ -->
+<div id="view-table" class="hidden min-h-screen flex flex-col">
+  <header class="sticky top-0 z-10 bg-gray-950/95 backdrop-blur border-b border-gray-800 px-4 py-3
+                 flex items-center justify-between">
+    <button onclick="goLobby()" class="text-sm text-gray-400 hover:text-white transition-colors">← Lobby</button>
+    <span id="t-title" class="font-semibold text-sm"></span>
+    <button onclick="navProfile(app.playerId)"
+      class="text-xs bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg px-3 py-1.5 transition-colors">
+      My Profile
+    </button>
+  </header>
+
+  <div class="flex-1 flex flex-col items-center p-4 gap-4 overflow-y-auto">
+
+    <!-- Oval table -->
+    <div class="relative w-full max-w-2xl" style="aspect-ratio:2/1; min-height:220px;">
+      <div class="poker-table absolute inset-0">
+        <!-- centre: community cards + pot -->
+        <div class="absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none">
+          <div id="board" class="flex gap-1 items-center"></div>
+          <div class="text-center">
+            <div id="t-pot"    class="text-yellow-300 font-bold text-base"></div>
+            <div id="t-street" class="text-gray-400 text-xs uppercase tracking-widest mt-0.5"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- seat positions (absolute, outside/on edge of oval) -->
+      <div id="s1" class="absolute" style="top:50%;left:1%;transform:translateY(-50%)"><div class="seat-w w-28"></div></div>
+      <div id="s2" class="absolute" style="top:3%;left:26%;transform:translateX(-50%)"><div class="seat-w w-28"></div></div>
+      <div id="s3" class="absolute" style="top:3%;right:26%;transform:translateX(50%)"><div class="seat-w w-28"></div></div>
+      <div id="s4" class="absolute" style="top:50%;right:1%;transform:translateY(-50%)"><div class="seat-w w-28"></div></div>
+      <div id="s5" class="absolute" style="bottom:3%;right:26%;transform:translateX(50%)"><div class="seat-w w-28"></div></div>
+      <div id="s6" class="absolute" style="bottom:3%;left:26%;transform:translateX(-50%)"><div class="seat-w w-28"></div></div>
+    </div>
+
+    <!-- my cards + status bar -->
+    <div class="flex items-center gap-4 bg-gray-900 rounded-2xl border border-gray-800 px-4 py-3 w-full max-w-2xl">
+      <div class="flex-1">
+        <div class="text-xs text-gray-500 mb-1">My Cards</div>
+        <div id="my-cards" class="flex gap-1 min-h-[46px] items-center"></div>
+      </div>
+      <div>
+        <button id="start-btn" onclick="startHand()"
+          class="hidden bg-green-600 hover:bg-green-500 rounded-xl px-4 py-2 text-sm font-semibold transition-colors">
+          Start Hand
+        </button>
+      </div>
+      <div id="t-conn" class="text-xs text-gray-600 shrink-0"></div>
+    </div>
+
+    <!-- action panel -->
+    <div id="action-panel" class="hidden w-full max-w-2xl bg-gray-900 border border-gray-800 rounded-2xl p-4">
+      <div class="text-xs text-green-400 font-semibold mb-3 uppercase tracking-wider">▶ Your Turn</div>
+      <div class="flex flex-wrap gap-2 items-center">
+        <button onclick="act('FOLD',0)"
+          class="bg-red-800 hover:bg-red-700 rounded-xl px-4 py-2 text-sm font-medium transition-colors">Fold</button>
+        <button id="btn-check" onclick="act('CHECK',0)"
+          class="bg-gray-700 hover:bg-gray-600 rounded-xl px-4 py-2 text-sm font-medium transition-colors">Check</button>
+        <button id="btn-call"  onclick="act('CALL',0)"
+          class="bg-blue-700 hover:bg-blue-600 rounded-xl px-4 py-2 text-sm font-medium transition-colors">Call</button>
+        <div class="flex items-center gap-1.5">
+          <input id="bet-amt" type="number" min="1" placeholder="Amount"
+            class="w-24 bg-gray-800 border border-gray-700 rounded-xl px-2.5 py-2 text-sm focus:outline-none focus:border-green-500">
+          <button onclick="act('BET',   +document.getElementById('bet-amt').value||0)"
+            class="bg-yellow-700 hover:bg-yellow-600 rounded-xl px-3 py-2 text-sm font-medium transition-colors">Bet</button>
+          <button onclick="act('RAISE', +document.getElementById('bet-amt').value||0)"
+            class="bg-orange-700 hover:bg-orange-600 rounded-xl px-3 py-2 text-sm font-medium transition-colors">Raise</button>
+        </div>
+        <button onclick="act('ALL_IN', myStack())"
+          class="bg-purple-700 hover:bg-purple-600 rounded-xl px-4 py-2 text-sm font-medium transition-colors">All-In</button>
+      </div>
+      <div id="act-err" class="hidden mt-2 text-sm text-red-400"></div>
+    </div>
+
+    <!-- coaching feedback panel -->
+    <div id="fb-panel" class="hidden w-full max-w-2xl feedback-slide">
+      <div id="fb-inner" class="bg-gray-900 border rounded-2xl p-5">
+
+        <!-- verdict row -->
+        <div class="flex items-start justify-between mb-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <span id="fb-badge" class="text-xs font-bold px-2.5 py-1 rounded-full"></span>
+            <span id="fb-arrow" class="text-sm text-gray-300"></span>
+          </div>
+          <button onclick="closeFb()" class="text-gray-600 hover:text-white text-xl leading-none ml-2">✕</button>
+        </div>
+
+        <!-- explanation -->
+        <p id="fb-exp" class="text-sm text-gray-200 mb-5 leading-relaxed"></p>
+
+        <!-- equity bar -->
+        <div class="mb-5">
+          <div class="flex justify-between text-xs text-gray-400 mb-1.5">
+            <span>Win Equity</span><span id="fb-eq-lbl" class="font-semibold text-white"></span>
+          </div>
+          <div class="bg-gray-800 rounded-full h-3 overflow-hidden mb-1.5">
+            <div id="fb-eq-bar" class="h-full rounded-full transition-all duration-500 ease-out"></div>
+          </div>
+          <div class="flex justify-between text-xs">
+            <span id="fb-po-lbl" class="text-gray-500"></span>
+            <span id="fb-edge"   class="font-medium"></span>
+          </div>
+        </div>
+
+        <!-- GTO reasoning -->
+        <div id="fb-gto" class="hidden bg-gray-800/60 rounded-xl p-4">
+          <div class="text-xs text-gray-400 uppercase tracking-wider mb-3 font-semibold">
+            Why GTO plays it differently
+          </div>
+          <ul id="fb-pts" class="space-y-2"></ul>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- end flex-col -->
+</div>
+
+<!-- ═══════ PROFILE ═══════ -->
+<div id="view-profile" class="hidden min-h-screen flex flex-col">
+  <header class="sticky top-0 z-10 bg-gray-950/95 backdrop-blur border-b border-gray-800 px-4 py-3 flex items-center gap-3">
+    <button onclick="history.back()" class="text-sm text-gray-400 hover:text-white transition-colors">← Back</button>
+    <h2 class="font-semibold">Player Profile</h2>
+  </header>
+  <main class="flex-1 p-6 max-w-3xl mx-auto w-full">
+    <div class="flex items-center gap-4 mb-8">
+      <div id="p-type" class="px-4 py-2 rounded-xl text-sm font-bold bg-green-950 text-green-300 border border-green-800"></div>
+      <div>
+        <div id="p-name" class="font-semibold text-lg"></div>
+        <div id="p-desc" class="text-sm text-gray-400 mt-0.5"></div>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+      <div class="stat-card"><div id="st-hands" class="stat-val"></div><div class="stat-lbl">Hands Played</div></div>
+      <div class="stat-card"><div id="st-vpip"  class="stat-val"></div><div class="stat-lbl">VPIP</div></div>
+      <div class="stat-card"><div id="st-pfr"   class="stat-val"></div><div class="stat-lbl">PFR</div></div>
+      <div class="stat-card"><div id="st-3b"    class="stat-val"></div><div class="stat-lbl">3-Bet %</div></div>
+      <div class="stat-card"><div id="st-af"    class="stat-val"></div><div class="stat-lbl">Aggr. Factor</div></div>
+      <div class="stat-card"><div id="st-wtsd"  class="stat-val"></div><div class="stat-lbl">WTSD %</div></div>
+      <div class="stat-card"><div id="st-wsd"   class="stat-val"></div><div class="stat-lbl">Won@SD %</div></div>
+      <div class="stat-card"><div id="st-prof"  class="stat-val"></div><div class="stat-lbl">Avg Profit</div></div>
+    </div>
+    <h3 class="font-semibold mb-4">Coaching Suggestions</h3>
+    <div id="sug-list" class="space-y-3"></div>
+    <p id="no-sug" class="hidden text-gray-600 text-sm mt-4">No suggestions yet — play more hands!</p>
+  </main>
+</div>
+
+<!-- ═══════ JOIN MODAL ═══════ -->
+<div id="join-modal" class="hidden fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
+  <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+    <h3 class="font-semibold mb-4">Take Seat <span id="m-no"></span></h3>
+    <input type="hidden" id="m-seat">
+    <div class="mb-4">
+      <label class="block text-xs text-gray-400 mb-1">Buy-in (chips)</label>
+      <input id="m-buyin" type="number" min="1" placeholder="500"
+        class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-500">
+    </div>
+    <div id="m-err" class="hidden mb-3 text-sm text-red-400"></div>
+    <div class="flex gap-3">
+      <button onclick="joinSeat()"
+        class="flex-1 bg-green-600 hover:bg-green-500 rounded-xl py-2 text-sm font-semibold transition-colors">Sit Down</button>
+      <button onclick="closeModal()"
+        class="flex-1 bg-gray-800 hover:bg-gray-700 rounded-xl py-2 text-sm transition-colors">Cancel</button>
     </div>
   </div>
-
-  <div id="seats-grid"></div>
 </div>
 
-<p id="no-data">Waiting for table events — connect and start a hand.</p>
-
-<!-- ── Event log ── -->
-<div id="log-section">
-  <h3>Event Log</h3>
-  <div id="event-log"></div>
-</div>
-
-<!-- ── Libraries (CDN) ── -->
-<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+<!-- stat-card styles (Tailwind @apply workaround) -->
+<style>
+  .stat-card { @apply bg-gray-900 rounded-xl border border-gray-800 p-4 text-center; }
+  .stat-val  { @apply text-2xl font-bold mb-1; }
+  .stat-lbl  { @apply text-xs text-gray-500; }
+</style>
 
 <script>
-  let stompClient = null;
-  let currentTableId = null;
-  let subscription = null;
+// ─────────────────────────────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────────────────────────────
+const app = {
+  token:    localStorage.getItem('token'),
+  playerId: localStorage.getItem('playerId'),
+  username: localStorage.getItem('username'),
+  authTab: 'login',
+  filter: 'all',
+  lobbyTimer: null,
+  feedTimer: null,
+  // table
+  tableId: null, tableName: null, smallBlind: 0, bigBlind: 0,
+  tableStatus: 'WAITING', tableSeats: [],
+  handId: null, street: null, potChips: 0,
+  nextActionSeat: -1, dealerSeat: -1, sbSeat: -1, bbSeat: -1,
+  myHoleCards: [], mySeatNo: -1, liveSeats: [], boardCards: [],
+  hasBet: false,        // whether there is a bet to call on the current street
+  stompClient: null, stompSub: null,
+};
 
-  // ── UI helpers ──────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// ROUTING
+// ─────────────────────────────────────────────────────────────────────────────
+function showView(name) {
+  ['auth','lobby','table','profile'].forEach(v =>
+    document.getElementById('view-' + v).classList.add('hidden'));
+  document.getElementById('view-' + name).classList.remove('hidden');
+}
 
-  function setStatus(text, cls) {
-    const el = document.getElementById('status');
-    el.textContent = text;
-    el.className = 'status-' + cls;
+function navigate() {
+  if (!app.token) { showView('auth'); return; }
+  const h = location.hash || '#lobby';
+  if      (h.startsWith('#table/'))   loadTable(h.slice(7));
+  else if (h.startsWith('#profile/')) loadProfile(h.slice(9));
+  else                                loadLobby();
+}
+
+window.addEventListener('hashchange', navigate);
+window.addEventListener('DOMContentLoaded', () => {
+  if (app.token && (!location.hash || location.hash === '#auth')) {
+    location.hash = '#lobby';
+  } else { navigate(); }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// API
+// ─────────────────────────────────────────────────────────────────────────────
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (app.token) opts.headers['Authorization'] = 'Bearer ' + app.token;
+  if (body !== undefined) opts.body = JSON.stringify(body);
+  const res  = await fetch(path, opts);
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : {};
+  if (!res.ok) throw { status: res.status, data };
+  return data;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTH
+// ─────────────────────────────────────────────────────────────────────────────
+function switchTab(t) {
+  app.authTab = t;
+  const on  = 'flex-1 pb-3 text-sm font-medium tab-active';
+  const off = 'flex-1 pb-3 text-sm font-medium text-gray-500';
+  document.getElementById('tab-login').className    = t === 'login'    ? on : off;
+  document.getElementById('tab-register').className = t === 'register' ? on : off;
+  document.getElementById('auth-btn').textContent   = t === 'login' ? 'Login' : 'Register';
+  document.getElementById('auth-err').classList.add('hidden');
+}
+
+async function submitAuth(e) {
+  e.preventDefault();
+  const u = document.getElementById('auth-user').value.trim();
+  const p = document.getElementById('auth-pass').value;
+  try {
+    const r = await api('POST', app.authTab === 'login' ? '/auth/login' : '/auth/register',
+                        { username: u, password: p });
+    app.token = r.token; app.playerId = r.playerId; app.username = r.username;
+    localStorage.setItem('token', r.token);
+    localStorage.setItem('playerId', r.playerId);
+    localStorage.setItem('username', r.username);
+    location.hash = '#lobby';
+  } catch (err) {
+    const el = document.getElementById('auth-err');
+    el.textContent = err.data?.message || 'Authentication failed';
+    el.classList.remove('hidden');
   }
+}
 
-  function appendLog(msg) {
-    const log = document.getElementById('event-log');
-    const now = new Date().toLocaleTimeString('en-US', { hour12: false });
-    const line = document.createElement('div');
-    line.innerHTML = `<span class="log-ts">${now}</span>${msg}`;
-    log.appendChild(line);
-    log.scrollTop = log.scrollHeight;
+function logout() {
+  app.token = app.playerId = app.username = null;
+  ['token','playerId','username'].forEach(k => localStorage.removeItem(k));
+  disconnectStomp(); clearInterval(app.lobbyTimer);
+  location.hash = '#auth'; showView('auth');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LOBBY
+// ─────────────────────────────────────────────────────────────────────────────
+function loadLobby() {
+  showView('lobby');
+  document.getElementById('lobby-user').textContent = app.username || '';
+  clearInterval(app.lobbyTimer);
+  fetchTables(); app.lobbyTimer = setInterval(fetchTables, 10000);
+}
+
+function goLobby() { disconnectStomp(); clearTimeout(app.feedTimer); location.hash = '#lobby'; }
+
+async function fetchTables() {
+  try {
+    const q = app.filter !== 'all' ? '?status=' + app.filter : '';
+    renderTables(await api('GET', '/tables' + q));
+  } catch { /* ignore polling errors */ }
+}
+
+function setFilter(f) {
+  app.filter = f;
+  ['all','WAITING','IN_HAND'].forEach(k => {
+    const btn = document.getElementById('f-' + k);
+    if (!btn) return;
+    btn.className = k === f
+      ? 'text-xs rounded-full px-3 py-1 bg-green-700 text-white'
+      : 'text-xs rounded-full px-3 py-1 bg-gray-800 text-gray-400 hover:bg-gray-700';
+  });
+  fetchTables();
+}
+
+function renderTables(tables) {
+  const grid = document.getElementById('tables-grid');
+  const none = document.getElementById('no-tables');
+  grid.innerHTML = '';
+  if (!tables.length) { none.classList.remove('hidden'); return; }
+  none.classList.add('hidden');
+  tables.forEach(t => {
+    const sc = t.status === 'WAITING' ? 'text-green-400 bg-green-950'
+             : t.status === 'IN_HAND' ? 'text-yellow-400 bg-yellow-950' : 'text-gray-400 bg-gray-800';
+    const d = document.createElement('div');
+    d.className = 'bg-gray-900 border border-gray-800 rounded-2xl p-4 cursor-pointer hover:border-green-700 transition-colors select-none';
+    d.innerHTML = `
+      <div class="flex items-start justify-between mb-2">
+        <span class="font-medium text-sm">${esc(t.name)}</span>
+        <span class="text-xs px-2 py-0.5 rounded-full ${sc}">${t.status}</span>
+      </div>
+      <div class="text-xs text-gray-500">Blinds: ${t.smallBlind}/${t.bigBlind} &nbsp;·&nbsp; ${t.seatCount}/6 seated</div>`;
+    d.onclick = () => { location.hash = '#table/' + t.id; };
+    grid.appendChild(d);
+  });
+}
+
+function toggleCreateForm() {
+  const f = document.getElementById('create-form');
+  f.classList.toggle('hidden');
+  document.getElementById('c-err').classList.add('hidden');
+}
+
+async function createTable() {
+  const name = document.getElementById('c-name').value.trim();
+  const sb   = +document.getElementById('c-sb').value;
+  const bb   = +document.getElementById('c-bb').value;
+  const err  = document.getElementById('c-err');
+  if (!name || !sb || !bb) { err.textContent = 'Fill in all fields'; err.classList.remove('hidden'); return; }
+  if (bb !== 2 * sb)       { err.textContent = 'Big blind must be 2× small blind'; err.classList.remove('hidden'); return; }
+  try {
+    const t = await api('POST', '/tables', { name, smallBlind: sb, bigBlind: bb });
+    toggleCreateForm();
+    location.hash = '#table/' + t.id;
+  } catch (e) {
+    err.textContent = e.data?.message || 'Failed to create table'; err.classList.remove('hidden');
   }
+}
 
-  function escHtml(s) {
-    return String(s)
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;');
-  }
+// ─────────────────────────────────────────────────────────────────────────────
+// TABLE
+// ─────────────────────────────────────────────────────────────────────────────
+async function loadTable(id) {
+  showView('table'); clearInterval(app.lobbyTimer); disconnectStomp();
+  Object.assign(app, {
+    tableId: id, handId: null, myHoleCards: [], boardCards: [],
+    mySeatNo: -1, liveSeats: [], nextActionSeat: -1, hasBet: false,
+  });
+  ['action-panel','fb-panel'].forEach(x => document.getElementById(x).classList.add('hidden'));
+  document.getElementById('my-cards').innerHTML = '';
+  document.getElementById('board').innerHTML    = '';
+  document.getElementById('t-pot').textContent = '';
+  document.getElementById('t-street').textContent = '';
 
-  // ── Render ──────────────────────────────────────────────────────────────────
-
-  function renderEvent(ev) {
-    document.getElementById('no-data').style.display = 'none';
-    document.getElementById('table-state').style.display = 'block';
-
-    document.getElementById('s-street').textContent = ev.street ?? '—';
-    document.getElementById('s-pot').textContent   = ev.potChips != null ? '🪙 ' + ev.potChips : '—';
-    document.getElementById('s-acting').textContent = ev.nextActionSeat ?? '—';
-    document.getElementById('s-hand').textContent   = ev.handId ? ev.handId.substring(0, 8) + '…' : '—';
-
-    const grid = document.getElementById('seats-grid');
-    grid.innerHTML = '';
-
-    (ev.seats || []).forEach(seat => {
-      const isActing = seat.seatNo === ev.nextActionSeat;
-      const card = document.createElement('div');
-      card.className = 'seat-card'
-        + (isActing ? ' is-acting' : '')
-        + (seat.folded ? ' is-folded' : '');
-
-      let badges = '';
-      if (isActing) badges += '<span class="badge badge-acting">▶ TO ACT</span>';
-      if (seat.folded)  badges += '<span class="badge badge-folded">FOLDED</span>';
-      if (seat.allIn)   badges += '<span class="badge badge-allin">ALL-IN</span>';
-
-      card.innerHTML = `
-        <div class="seat-number">Seat ${escHtml(seat.seatNo)}</div>
-        <div class="seat-username">${escHtml(seat.username)}</div>
-        <div class="seat-stack seat-chips">${escHtml(seat.stackChips)}</div>
-        <div>${badges}</div>
-      `;
-      grid.appendChild(card);
+  try {
+    const d = await api('GET', '/tables/' + id);
+    Object.assign(app, {
+      tableName: d.name, smallBlind: d.smallBlind, bigBlind: d.bigBlind,
+      tableStatus: d.status, tableSeats: d.seats,
     });
+    document.getElementById('t-title').textContent = `${d.name}  (${d.smallBlind}/${d.bigBlind})`;
+    const mine = d.seats.find(s => s.playerId === app.playerId);
+    app.mySeatNo = mine ? mine.seatNo : -1;
+    renderSeats(d.seats, null, -1);
+    updateStartBtn();
+    connectStomp(id);
+  } catch (e) { console.error('load table', e); }
+}
 
-    appendLog(
-      `[${escHtml(ev.street)}] pot=${escHtml(ev.potChips)} ` +
-      `actingSeat=${escHtml(ev.nextActionSeat)} ` +
-      `seats=[${(ev.seats||[]).map(s => s.username + ':' + s.stackChips).join(', ')}]`
-    );
+// ── SEAT RENDERING ────────────────────────────────────────────────────────────
+function renderSeats(seats, live, acting) {
+  const sm = Object.fromEntries((seats||[]).map(s => [s.seatNo, s]));
+  const lm = Object.fromEntries((live||[]).map(s => [s.seatNo, s]));
+  for (let n = 1; n <= 6; n++) {
+    const wrap = document.getElementById('s' + n);
+    if (!wrap) continue;
+    const inner = wrap.querySelector('.seat-w');
+    const seat  = sm[n];
+    if (!seat || !seat.playerId) {
+      inner.innerHTML = app.mySeatNo < 1 && app.token
+        ? `<button onclick="openModal(${n})"
+             class="w-full text-xs text-gray-500 hover:text-green-400 border border-dashed border-gray-700
+                    hover:border-green-700 rounded-xl px-2 py-2.5 transition-colors">+ Seat ${n}</button>`
+        : `<div class="text-xs text-gray-700 border border-dashed border-gray-800 rounded-xl px-2 py-2.5 text-center">Seat ${n}</div>`;
+      continue;
+    }
+    const l   = lm[n];
+    const isMe   = seat.playerId === app.playerId;
+    const isAct  = acting === n;
+    const folded = l?.folded  ?? false;
+    const allIn  = l?.allIn   ?? false;
+    const stack  = l?.stackChips ?? seat.stackChips;
+    const cards  = isMe ? app.myHoleCards : (l ? ['**','**'] : null);
+
+    const blindTag = n === app.dealerSeat ? '<span class="text-xs bg-gray-700 px-1 rounded">D</span>'
+                   : n === app.sbSeat     ? '<span class="text-xs bg-yellow-900 text-yellow-300 px-1 rounded">SB</span>'
+                   : n === app.bbSeat     ? '<span class="text-xs bg-blue-900 text-blue-300 px-1 rounded">BB</span>'
+                   : '';
+    const border = isAct   ? 'border-green-500 seat-acting'
+                 : isMe    ? 'border-blue-600'
+                 : folded  ? 'border-gray-700 opacity-40'
+                 : 'border-gray-700';
+    inner.innerHTML = `
+      <div class="bg-gray-900/95 border ${border} rounded-xl px-2 py-2 text-center">
+        <div class="flex justify-center gap-1 mb-0.5 text-xs">
+          ${blindTag}
+          ${isAct  ? '<span class="text-green-400">▶</span>' : ''}
+          ${folded ? '<span class="text-red-500">F</span>'   : ''}
+          ${allIn  ? '<span class="text-purple-400">A</span>': ''}
+        </div>
+        <div class="text-xs font-medium truncate ${isMe ? 'text-blue-300' : 'text-white'} mb-0.5">${esc(seat.username)}</div>
+        <div class="text-xs text-yellow-300 mb-1">${stack} ♟</div>
+        <div class="flex gap-0.5 justify-center">${(cards||[]).map(cardHtml).join('')}</div>
+      </div>`;
   }
+}
 
-  // ── STOMP lifecycle ─────────────────────────────────────────────────────────
+function cardHtml(code) {
+  if (!code || code === '**') return '<div class="card-back"></div>';
+  const rank = code.slice(0,-1);
+  const suit = code.slice(-1);
+  const sym  = {h:'♥',d:'♦',s:'♠',c:'♣'}[suit] || suit;
+  const red  = suit === 'h' || suit === 'd';
+  return `<div class="card ${red?'red':'black'}"><span>${rank}${sym}</span><span>${sym}</span></div>`;
+}
 
-  function connectToTable() {
-    const tableId = document.getElementById('table-id-input').value.trim();
-    if (!tableId) { alert('Please enter a Table ID.'); return; }
-    currentTableId = tableId;
+function renderBoard(cards, street) {
+  const total = street === 'PREFLOP' ? 0
+              : street === 'FLOP'    ? 3
+              : street === 'TURN'    ? 4
+              : street === 'RIVER' || street === 'SHOWDOWN' ? 5 : 0;
+  let html = '';
+  for (let i = 0; i < 5; i++) {
+    html += i < total
+      ? (cards && cards[i] ? cardHtml(cards[i]) : '<div class="card-back"></div>')
+      : '<div class="card-placeholder"></div>';
+  }
+  document.getElementById('board').innerHTML = html;
+}
 
-    setStatus('CONNECTING…', 'connecting');
-    document.getElementById('connect-btn').disabled = true;
+function renderMyCards() {
+  const el = document.getElementById('my-cards');
+  if (!app.myHoleCards?.length) { el.innerHTML = '<span class="text-xs text-gray-600">—</span>'; return; }
+  el.innerHTML = app.myHoleCards.map(cardHtml).join('');
+}
 
-    stompClient = new StompJs.Client({
-      webSocketFactory: () => new SockJS('/ws'),
-      reconnectDelay: 5000,
+function updateStartBtn() {
+  const seated = (app.tableSeats||[]).filter(s => s.playerId).length;
+  const can = app.tableStatus === 'WAITING' && seated >= 2 && app.mySeatNo > 0 && !app.handId;
+  document.getElementById('start-btn').classList.toggle('hidden', !can);
+}
 
-      onConnect: function(frame) {
-        setStatus('CONNECTED', 'connected');
-        document.getElementById('disconnect-btn').disabled = false;
-        appendLog(`Connected to broker. Frame: ${escHtml(frame.command)}`);
+// ── STOMP ─────────────────────────────────────────────────────────────────────
+function connectStomp(tableId) {
+  const conn = document.getElementById('t-conn');
+  conn.textContent = 'Connecting…'; conn.className = 'text-xs text-yellow-400 shrink-0';
+  app.stompClient = new StompJs.Client({
+    webSocketFactory: () => new SockJS('/ws'),
+    reconnectDelay: 5000,
+    onConnect: () => {
+      conn.textContent = '● Live'; conn.className = 'text-xs text-green-400 shrink-0';
+      app.stompSub = app.stompClient.subscribe('/topic/tables/' + tableId, msg => {
+        try { handleEvent(JSON.parse(msg.body)); } catch { /* ignore */ }
+      });
+    },
+    onDisconnect: () => { conn.textContent = '○ Disconnected'; conn.className = 'text-xs text-gray-600 shrink-0'; },
+    onWebSocketError: () => { conn.textContent = '✕ Error'; conn.className = 'text-xs text-red-500 shrink-0'; },
+  });
+  app.stompClient.activate();
+}
 
-        subscription = stompClient.subscribe(
-          '/topic/tables/' + tableId,
-          function(msg) {
-            try {
-              const ev = JSON.parse(msg.body);
-              renderEvent(ev);
-            } catch (e) {
-              appendLog('Parse error: ' + e.message);
-            }
-          }
-        );
-        appendLog(`Subscribed to /topic/tables/${escHtml(tableId)}`);
-      },
+function disconnectStomp() {
+  app.stompSub?.unsubscribe(); app.stompSub = null;
+  app.stompClient?.deactivate(); app.stompClient = null;
+}
 
-      onStompError: function(frame) {
-        appendLog('STOMP error: ' + escHtml(frame.headers['message'] || '?'));
-        setStatus('ERROR', 'disconnected');
-      },
+function handleEvent(ev) {
+  app.handId = ev.handId; app.street = ev.street;
+  app.potChips = ev.potChips; app.nextActionSeat = ev.nextActionSeat;
+  app.liveSeats = ev.seats || [];
+  document.getElementById('t-pot').textContent    = ev.potChips ? '💰 ' + ev.potChips : '';
+  document.getElementById('t-street').textContent = ev.street || '';
+  renderSeats(app.tableSeats, ev.seats, ev.nextActionSeat);
+  renderBoard(app.boardCards, ev.street);
+  showActionPanel(ev.nextActionSeat);
+}
 
-      onDisconnect: function() {
-        setStatus('DISCONNECTED', 'disconnected');
-        document.getElementById('connect-btn').disabled = false;
-        document.getElementById('disconnect-btn').disabled = true;
-        appendLog('Disconnected.');
-      },
+function showActionPanel(nextSeat) {
+  const myTurn = app.mySeatNo > 0 && nextSeat === app.mySeatNo;
+  document.getElementById('action-panel').classList.toggle('hidden', !myTurn);
+  if (myTurn) {
+    document.getElementById('act-err').classList.add('hidden');
+    document.getElementById('bet-amt').value =
+      Math.max(app.bigBlind * 2, Math.round(app.potChips * 0.6));
+  }
+}
 
-      onWebSocketError: function(evt) {
-        appendLog('WebSocket error — is the server running?');
-        setStatus('DISCONNECTED', 'disconnected');
-        document.getElementById('connect-btn').disabled = false;
-      }
+// ── START HAND ────────────────────────────────────────────────────────────────
+async function startHand() {
+  try {
+    const h = await api('POST', '/tables/' + app.tableId + '/hands');
+    app.handId = h.handId; app.street = h.street; app.potChips = h.potChips;
+    app.dealerSeat = h.dealerSeat; app.sbSeat = h.sbSeat; app.bbSeat = h.bbSeat;
+    app.myHoleCards = h.myHoleCards || [];
+    app.boardCards  = h.boardCards  || [];
+    app.tableStatus = 'IN_HAND';
+    app.hasBet = true; // blinds = bet on preflop
+    renderMyCards();
+    renderBoard(app.boardCards, h.street);
+    document.getElementById('t-pot').textContent    = '💰 ' + h.potChips;
+    document.getElementById('t-street').textContent = h.street || '';
+    renderSeats(app.tableSeats, h.seats, -1);
+    updateStartBtn();
+  } catch (e) { alert(e.data?.message || 'Cannot start hand'); }
+}
+
+// ── ACTIONS ───────────────────────────────────────────────────────────────────
+async function act(type, amount) {
+  const err = document.getElementById('act-err');
+  err.classList.add('hidden');
+  try {
+    const r = await api('POST', '/hands/' + app.handId + '/actions', { actionType: type, amount });
+    app.street = r.street; app.potChips = r.potChips;
+    app.nextActionSeat = r.nextSeat; app.liveSeats = r.seats || [];
+    app.boardCards = r.boardCards || app.boardCards;
+    document.getElementById('t-pot').textContent    = r.potChips ? '💰 ' + r.potChips : '';
+    document.getElementById('t-street').textContent = r.street || '';
+    renderSeats(app.tableSeats, r.seats, r.nextSeat);
+    renderBoard(app.boardCards, r.street);
+    showActionPanel(r.nextSeat);
+    // Track whether there is a bet on the new state
+    app.hasBet = type === 'BET' || type === 'RAISE';
+    if (r.nextSeat === -1) {
+      app.handId = null; app.myHoleCards = [];
+      renderMyCards(); renderBoard([], '');
+      setTimeout(() => { app.tableStatus = 'WAITING'; updateStartBtn(); }, 1500);
+    }
+    if (r.feedback) showFeedback(r.feedback);
+  } catch (e) {
+    err.textContent = e.data?.message || 'Action failed';
+    err.classList.remove('hidden');
+  }
+}
+
+function myStack() {
+  if (app.liveSeats.length) { const s = app.liveSeats.find(s => s.seatNo === app.mySeatNo); return s?.stackChips ?? 0; }
+  const s = app.tableSeats.find(s => s.seatNo === app.mySeatNo); return s?.stackChips ?? 0;
+}
+
+// ── FEEDBACK ─────────────────────────────────────────────────────────────────
+const Q_STYLE = {
+  OPTIMAL:    { bg:'#14532d', border:'#22c55e', text:'#22c55e', label:'✓ OPTIMAL' },
+  ACCEPTABLE: { bg:'#713f12', border:'#eab308', text:'#eab308', label:'~ ACCEPTABLE' },
+  SUBOPTIMAL: { bg:'#7c2d12', border:'#f97316', text:'#f97316', label:'! SUBOPTIMAL' },
+  MISTAKE:    { bg:'#7f1d1d', border:'#ef4444', text:'#ef4444', label:'✕ MISTAKE' },
+};
+
+function showFeedback(fb) {
+  clearTimeout(app.feedTimer);
+  const q = Q_STYLE[fb.quality] || Q_STYLE.SUBOPTIMAL;
+  document.getElementById('fb-inner').style.borderColor = q.border;
+  const badge = document.getElementById('fb-badge');
+  badge.textContent = q.label; badge.style.background = q.bg; badge.style.color = q.text;
+  document.getElementById('fb-arrow').textContent =
+    fb.actionTaken !== fb.recommendedAction
+      ? `${fb.actionTaken} → recommended: ${fb.recommendedAction}`
+      : `You played: ${fb.actionTaken}`;
+  document.getElementById('fb-exp').textContent = fb.explanation || '';
+
+  const eqPct = Math.round((fb.equity  || 0) * 100);
+  const poPct = Math.round((fb.potOdds || 0) * 100);
+  document.getElementById('fb-eq-lbl').textContent = eqPct + '%';
+  const bar = document.getElementById('fb-eq-bar');
+  bar.style.width      = eqPct + '%';
+  bar.style.background = eqPct > 50 ? '#22c55e' : eqPct > poPct ? '#eab308' : '#ef4444';
+  document.getElementById('fb-po-lbl').textContent = 'Pot odds: ' + poPct + '%';
+  const edge = document.getElementById('fb-edge');
+  edge.textContent = eqPct > poPct ? '✓ You have the edge' : '✗ Not getting the right price';
+  edge.style.color = eqPct > poPct ? '#22c55e' : '#ef4444';
+
+  const gto  = document.getElementById('fb-gto');
+  const pts  = document.getElementById('fb-pts');
+  if (fb.gtoPoints?.length) {
+    gto.classList.remove('hidden');
+    pts.innerHTML = fb.gtoPoints.map(p =>
+      `<li class="flex gap-2 text-sm text-gray-300 leading-relaxed">
+         <span class="text-green-500 shrink-0 mt-0.5">•</span>
+         <span>${esc(p)}</span>
+       </li>`).join('');
+  } else { gto.classList.add('hidden'); }
+
+  document.getElementById('fb-panel').classList.remove('hidden');
+  document.getElementById('fb-panel').classList.add('feedback-slide');
+  app.feedTimer = setTimeout(closeFb, 14000);
+}
+
+function closeFb() {
+  document.getElementById('fb-panel').classList.add('hidden');
+  clearTimeout(app.feedTimer);
+}
+
+// ── JOIN MODAL ────────────────────────────────────────────────────────────────
+function openModal(n) {
+  document.getElementById('m-no').textContent = n;
+  document.getElementById('m-seat').value = n;
+  document.getElementById('m-buyin').value = 500;
+  document.getElementById('m-err').classList.add('hidden');
+  document.getElementById('join-modal').classList.remove('hidden');
+}
+function closeModal() { document.getElementById('join-modal').classList.add('hidden'); }
+
+async function joinSeat() {
+  const seatNo = +document.getElementById('m-seat').value;
+  const buyIn  = +document.getElementById('m-buyin').value;
+  const err    = document.getElementById('m-err');
+  try {
+    await api('POST', '/tables/' + app.tableId + '/seats',
+              { playerId: app.playerId, seatNo, buyIn });
+    app.mySeatNo = seatNo;
+    const d = await api('GET', '/tables/' + app.tableId);
+    app.tableSeats = d.seats; app.tableStatus = d.status;
+    renderSeats(app.tableSeats, app.liveSeats, app.nextActionSeat);
+    updateStartBtn(); closeModal();
+  } catch (e) {
+    err.textContent = e.data?.message || 'Could not join seat';
+    err.classList.remove('hidden');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROFILE
+// ─────────────────────────────────────────────────────────────────────────────
+async function loadProfile(pid) {
+  showView('profile'); clearInterval(app.lobbyTimer);
+  try {
+    const p = await api('GET', '/players/' + pid + '/profile');
+    document.getElementById('p-name').textContent = p.username;
+    document.getElementById('p-type').textContent = p.playerType;
+    document.getElementById('p-desc').textContent = TYPE_DESCS[p.playerType] || p.playerTypeDescription || '';
+    const s = p.stats;
+    document.getElementById('st-hands').textContent = s.handsPlayed;
+    document.getElementById('st-vpip').textContent  = pct(s.vpip);
+    document.getElementById('st-pfr').textContent   = pct(s.pfr);
+    document.getElementById('st-3b').textContent    = pct(s.threeBetPct);
+    document.getElementById('st-af').textContent    = s.aggressionFactor.toFixed(2);
+    document.getElementById('st-wtsd').textContent  = pct(s.wtsdPct);
+    document.getElementById('st-wsd').textContent   = pct(s.wonAtSdPct);
+    const pr = s.avgProfitPerHand;
+    const prEl = document.getElementById('st-prof');
+    prEl.textContent = (pr >= 0 ? '+' : '') + pr.toFixed(1);
+    prEl.style.color = pr >= 0 ? '#22c55e' : '#ef4444';
+
+    colorStat('st-vpip', s.vpip,  0.15, 0.35);
+    colorStat('st-pfr',  s.pfr,   0.10, 0.25);
+    colorStat('st-wtsd', s.wtsdPct, 0.20, 0.40);
+    colorStat('st-wsd',  s.wonAtSdPct, 0.45, 1.0, false);
+
+    const list = document.getElementById('sug-list');
+    const none = document.getElementById('no-sug');
+    list.innerHTML = '';
+    if (!p.suggestions?.length) { none.classList.remove('hidden'); return; }
+    none.classList.add('hidden');
+    p.suggestions.forEach(sg => {
+      const sc = sg.severity === 'CRITICAL' ? 'border-red-800 bg-red-950/40'
+               : sg.severity === 'WARNING'  ? 'border-yellow-800 bg-yellow-950/40'
+               : 'border-blue-900 bg-blue-950/40';
+      const ic = sg.severity === 'CRITICAL' ? '🚨' : sg.severity === 'WARNING' ? '⚠️' : 'ℹ️';
+      const d = document.createElement('div');
+      d.className = `border ${sc} rounded-2xl p-4`;
+      d.innerHTML = `
+        <div class="flex gap-3">
+          <span class="text-lg shrink-0 mt-0.5">${ic}</span>
+          <div>
+            <div class="text-xs text-gray-500 mb-0.5">${esc(sg.category)}</div>
+            <div class="font-medium text-sm mb-1">${esc(sg.title)}</div>
+            <div class="text-sm text-gray-300 leading-relaxed">${esc(sg.detail)}</div>
+          </div>
+        </div>`;
+      list.appendChild(d);
     });
+  } catch (e) { console.error('load profile', e); }
+}
 
-    stompClient.activate();
-  }
+function navProfile(pid) { location.hash = '#profile/' + pid; }
 
-  function disconnectFromTable() {
-    if (subscription) { subscription.unsubscribe(); subscription = null; }
-    if (stompClient)  { stompClient.deactivate(); stompClient = null; }
-    setStatus('DISCONNECTED', 'disconnected');
-    document.getElementById('connect-btn').disabled = false;
-    document.getElementById('disconnect-btn').disabled = true;
-    appendLog('Disconnected by user.');
-  }
+function colorStat(id, val, lo, hi, moreGood = true) {
+  const el = document.getElementById(id); if (!el) return;
+  const inRange = val >= lo && val <= hi;
+  el.style.color = inRange ? '#22c55e'
+    : (moreGood && val < lo) || (!moreGood && val > hi) ? '#ef4444' : '#eab308';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────────────────────────────────────
+const TYPE_DESCS = {
+  TAG:             'Tight Aggressive — solid, balanced play',
+  LAG:             'Loose Aggressive — wide range, high pressure',
+  NIT:             'Tight Passive — only plays premium hands',
+  CALLING_STATION: 'Calls too often — needs to fold more',
+  FISH:            'Loose Passive — plays too many hands weakly',
+  MANIAC:          'Extremely Aggressive — raises excessively',
+  UNKNOWN:         'Not enough hands played for a classification',
+};
+
+function pct(v) { return Math.round((v || 0) * 100) + '%'; }
+
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 </script>
 </body>
 </html>

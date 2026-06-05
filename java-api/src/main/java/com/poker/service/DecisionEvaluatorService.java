@@ -7,6 +7,8 @@ import com.poker.domain.model.SeatState;
 import com.poker.domain.model.SnapshotPayload;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 /**
  * Produces real-time coaching feedback for a player's action.
  *
@@ -86,7 +88,10 @@ public class DecisionEvaluatorService {
         // ── 6. Build explanation ──────────────────────────────────────────────
         String explanation = explain(actionTaken, recommended, equity, potOdds, quality, callAmount);
 
-        return new ActionFeedback(actionTaken, recommended, equity, potOdds, quality, explanation);
+        // ── 7. Build GTO reasoning bullets ───────────────────────────────────
+        List<String> gtoPoints = buildGtoPoints(actionTaken, recommended, equity, potOdds, callAmount);
+
+        return new ActionFeedback(actionTaken, recommended, equity, potOdds, quality, explanation, gtoPoints);
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
@@ -181,6 +186,94 @@ public class DecisionEvaluatorService {
             case RAISE -> "Raising for value";
             case ALL_IN -> "Going all-in";
         };
+    }
+
+    private List<String> buildGtoPoints(ActionType actual, ActionType recommended,
+                                         double equity, double potOdds, int callAmount) {
+        String eq  = pct(equity);
+        String po  = pct(potOdds);
+
+        // Reinforcement when the player made the correct play
+        if (actual == recommended) {
+            return switch (actual) {
+                case FOLD  -> List.of(
+                    "Folding with " + eq + " equity is correct — you were a significant underdog.",
+                    "Pot odds math: you needed more than " + po + " equity to call profitably, but had less.",
+                    "Disciplined folds protect your stack for better spots.");
+                case CHECK -> List.of(
+                    "Checking is right here — your " + eq + " equity doesn't justify a bet.",
+                    "Betting a weak hand turns it into a bluff with little fold equity.",
+                    "Pot control is a core GTO concept: don't bloat pots when behind.");
+                case CALL  -> List.of(
+                    "Good call — your " + eq + " equity exceeds the " + po + " pot odds required.",
+                    "Pot odds math: you break even at " + po + "; anything above is profitable long-term.",
+                    "Calling with a positive equity edge is always the right mathematical play.");
+                case BET   -> List.of(
+                    "Betting for value with " + eq + " equity builds the pot while you're ahead.",
+                    "GTO principle: bet the top of your range to extract chips from weaker hands.",
+                    "Value betting polarises your range and makes you harder to read.");
+                case RAISE -> List.of(
+                    "Raising extracts maximum value from your " + eq + " equity advantage.",
+                    "You only needed " + po + " to call, but raising builds a bigger pot while ahead.",
+                    "GTO raises with strong hands to charge drawing hands and build value.");
+                case ALL_IN -> List.of(
+                    "Going all-in with " + eq + " equity commits chips at a mathematical advantage.",
+                    "When equity far exceeds pot odds, getting all the money in is optimal.");
+            };
+        }
+
+        // Raise recommended, player called
+        if (recommended == ActionType.RAISE && actual == ActionType.CALL) {
+            return List.of(
+                "With " + eq + " equity you hold a range advantage — raising extracts more value.",
+                "A call lets your opponent see the next card cheaply; a raise makes them pay or fold.",
+                "Pot odds math: you only needed " + po + " to call, but " + eq + " equity warrants going for more.",
+                "GTO strategy: raise with the top of your range, call with the middle.");
+        }
+
+        // Bet recommended, player checked
+        if (recommended == ActionType.BET && actual == ActionType.CHECK) {
+            return List.of(
+                "With " + eq + " equity, betting charges opponents for their draws.",
+                "Checking gives a free card — drawing hands improve without paying.",
+                "GTO bets the top of its range; checking with strong equity is a missed value opportunity.",
+                "Value bets also build the pot for future streets when you remain ahead.");
+        }
+
+        // Fold recommended, player called (or raised)
+        if (recommended == ActionType.FOLD
+                && (actual == ActionType.CALL || actual == ActionType.RAISE)) {
+            double deficit = Math.max(0, potOdds - equity);
+            return List.of(
+                "Your " + eq + " equity means you'll lose this pot roughly " + pct(1 - equity) + " of the time.",
+                "You need " + po + " equity to break even on a call — your " + eq + " falls " + pct(deficit) + " short.",
+                "Continuing without the right price bleeds chips slowly across many hands.",
+                "GTO folds when equity doesn't cover the cost of the call.");
+        }
+
+        // Call recommended, player folded
+        if (recommended == ActionType.CALL && actual == ActionType.FOLD) {
+            return List.of(
+                "With " + eq + " equity you were mathematically priced in — pot odds were only " + po + ".",
+                "Folding a profitable call means giving up expected value on this hand.",
+                "GTO calls whenever equity exceeds pot odds, even with a modest edge.",
+                "Over many hands, folding with equity leads to a significant chip loss.");
+        }
+
+        // Fold recommended, player raised (bluff raise without equity)
+        if (recommended == ActionType.FOLD && actual == ActionType.RAISE) {
+            return List.of(
+                "Raising with only " + eq + " equity puts chips in as a significant underdog.",
+                "Bluff raises require substantial fold equity to be profitable — and if called, " + eq + " is too weak.",
+                "GTO raises as bluffs only with hands that have good equity or block strong opponent holdings.",
+                "Folding preserves your stack for spots where you have a real equity advantage.");
+        }
+
+        // Generic fallback for any other combination
+        return List.of(
+            "Equity (" + eq + ") vs pot odds (" + po + ") is the foundation of every decision.",
+            "GTO maximises expected value by betting/raising strong hands and folding weak ones.",
+            "Consistent correct decisions compound into a winning edge over many hands.");
     }
 
     /** Formats a [0,1] probability as a percentage string, e.g. {@code "62%"}. */

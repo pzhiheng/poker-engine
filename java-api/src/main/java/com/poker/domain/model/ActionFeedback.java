@@ -1,5 +1,7 @@
 package com.poker.domain.model;
 
+import java.util.List;
+
 /**
  * Coaching feedback generated immediately after a player's action.
  *
@@ -14,6 +16,7 @@ package com.poker.domain.model;
  *   <li>{@code potOdds}          — break-even call percentage (0 when no bet faces)</li>
  *   <li>{@code quality}          — OPTIMAL / ACCEPTABLE / SUBOPTIMAL / MISTAKE</li>
  *   <li>{@code explanation}      — human-readable coaching sentence</li>
+ *   <li>{@code gtoPoints}        — 2–4 educational GTO reasoning bullets</li>
  * </ul>
  */
 public record ActionFeedback(
@@ -22,5 +25,6 @@ public record ActionFeedback(
         double          equity,
         double          potOdds,
         FeedbackQuality quality,
-        String          explanation
+        String          explanation,
+        List<String>    gtoPoints
 ) {}

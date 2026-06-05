@@ -26,6 +26,7 @@ public record ActionResponse(
         String         street,
         int            potChips,
         int            nextSeat,
+        List<String>   boardCards,  // 0/3/4/5 community cards at this point in the hand
         List<SeatView> seats,
         ActionFeedback feedback
 ) {}

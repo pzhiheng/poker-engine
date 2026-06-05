@@ -71,7 +71,7 @@ class HandControllerTest {
 
         HandResponse resp = new HandResponse(
             handId, tableId, "PREFLOP", 15, 1, 1, 2,
-            List.of("Ah", "Kh"), List.of(seatA, seatB));
+            List.of(), List.of("Ah", "Kh"), List.of(seatA, seatB));
 
         when(handService.startHand(eq(tableId), any(UUID.class))).thenReturn(resp);
 
@@ -156,7 +156,8 @@ class HandControllerTest {
         ActionFeedback feedback = new ActionFeedback(
             ActionType.CALL, ActionType.RAISE, 0.62, 0.28,
             FeedbackQuality.SUBOPTIMAL,
-            "You had 62% equity vs 28% pot odds — raising for value would be stronger.");
+            "You had 62% equity vs 28% pot odds — raising for value would be stronger.",
+            List.of());
 
         HandResponse.SeatView seatA = new HandResponse.SeatView(
             1, playerId, "testuser", 490, List.of("Ah", "Kh"), false, false);
@@ -164,7 +165,7 @@ class HandControllerTest {
             2, UUID.randomUUID(), "bob", 480, List.of("**", "**"), false, false);
 
         ActionResponse resp = new ActionResponse(
-            handId, 2, "PREFLOP", 30, 2, List.of(seatA, seatB), feedback);
+            handId, 2, "PREFLOP", 30, 2, List.of(), List.of(seatA, seatB), feedback);
 
         when(handService.recordAction(eq(handId), any(UUID.class), any()))
             .thenReturn(resp);

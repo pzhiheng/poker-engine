@@ -215,7 +215,7 @@ public class HandService {
                             initialPot, actionSeatNo, seatStates));
 
         return buildHandResponse(hand, table, seatStates, dealerSeatNo, sbSeatNo, bbSeatNo,
-                                 requestingPlayerId);
+                                 payload.board(), requestingPlayerId);
     }
 
     // ── Record action ─────────────────────────────────────────────────────────
@@ -360,6 +360,7 @@ public class HandService {
 
         return new ActionResponse(
             handId, nextVersion, newStreet, newPot, nextActionSeat,
+            after.board(),
             buildSeatViews(updatedSeats, requestingPlayerId),
             feedback
         );
@@ -587,6 +588,7 @@ public class HandService {
     private HandResponse buildHandResponse(Hand hand, PokerTable table,
                                             List<SeatState> seatStates,
                                             int dealerSeat, int sbSeat, int bbSeat,
+                                            List<String> boardCards,
                                             UUID requestingPlayerId) {
         List<String> myHoleCards = null;
         List<HandResponse.SeatView> seats = new ArrayList<>();
@@ -603,6 +605,6 @@ public class HandService {
         }
 
         return new HandResponse(hand.getId(), table.getId(), hand.getStreet().name(),
-            hand.getPotChips(), dealerSeat, sbSeat, bbSeat, myHoleCards, seats);
+            hand.getPotChips(), dealerSeat, sbSeat, bbSeat, boardCards, myHoleCards, seats);
     }
 }
