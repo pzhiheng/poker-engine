@@ -1,6 +1,7 @@
 package com.poker.web.controller;
 
 import com.poker.domain.model.TableStatus;
+import com.poker.service.BotPlayerService;
 import com.poker.service.TableService;
 import com.poker.web.dto.CreateTableRequest;
 import com.poker.web.dto.JoinSeatRequest;
@@ -37,10 +38,12 @@ import java.util.UUID;
 @RequestMapping("/tables")
 public class TableController {
 
-    private final TableService tableService;
+    private final TableService    tableService;
+    private final BotPlayerService botPlayerService;
 
-    public TableController(TableService tableService) {
-        this.tableService = tableService;
+    public TableController(TableService tableService, BotPlayerService botPlayerService) {
+        this.tableService    = tableService;
+        this.botPlayerService = botPlayerService;
     }
 
     // ── GET /tables ───────────────────────────────────────────────────────────
@@ -94,4 +97,23 @@ public class TableController {
             @Valid @RequestBody JoinSeatRequest req) {
         return tableService.joinSeat(id, req);
     }
+
+    // ── POST /tables/{id}/bots ────────────────────────────────────────────────
+
+    @Operation(summary = "Add a bot to the table",
+               description = "Seats the built-in bot player at the specified seat. Body: {\"seatNo\": 2, \"buyIn\": 500}. **Requires JWT.**")
+    @ApiResponse(responseCode = "201", description = "Bot seated")
+    @ApiResponse(responseCode = "422", description = "Seat taken or table not WAITING")
+    @PostMapping("/{id}/bots")
+    @ResponseStatus(HttpStatus.CREATED)
+    public SeatResponse addBot(
+            @Parameter(description = "Table UUID") @PathVariable UUID id,
+            @RequestBody AddBotRequest req) {
+        JoinSeatRequest joinReq = new JoinSeatRequest(
+            botPlayerService.getBotPlayerId(), req.seatNo(), req.buyIn());
+        return tableService.joinSeat(id, joinReq);
+    }
+
+    /** Minimal request body for adding a bot — no playerId needed. */
+    public record AddBotRequest(int seatNo, int buyIn) {}
 }

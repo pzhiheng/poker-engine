@@ -81,7 +81,7 @@ class HandServiceTest {
         service = new HandService(
             tableRepo, seatRepo, handRepo, snapshotRepo,
             actionRepo, playerRepo, deckService, evaluator, objectMapper,
-            meterRegistry, broker);
+            meterRegistry, broker, event -> {});
 
         tableId   = UUID.randomUUID();
         playerAId = UUID.randomUUID();

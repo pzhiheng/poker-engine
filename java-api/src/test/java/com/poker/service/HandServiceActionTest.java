@@ -82,7 +82,7 @@ class HandServiceActionTest {
     void setUp() throws Exception {
         service = new HandService(tableRepo, seatRepo, handRepo, snapshotRepo,
             actionRepo, playerRepo, deckService, evaluator, objectMapper,
-            new SimpleMeterRegistry(), broker);
+            new SimpleMeterRegistry(), broker, event -> {});
 
         handId    = UUID.randomUUID();
         playerAId = UUID.randomUUID();

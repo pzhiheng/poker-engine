@@ -22,6 +22,7 @@ import com.poker.domain.repository.HandSnapshotRepository;
 import com.poker.domain.repository.PlayerRepository;
 import com.poker.domain.repository.PokerTableRepository;
 import com.poker.domain.repository.TableSeatRepository;
+import com.poker.domain.event.HandActionEvent;
 import com.poker.exception.BusinessRuleException;
 import com.poker.exception.ResourceNotFoundException;
 import com.poker.config.WebSocketConfig;
@@ -31,6 +32,7 @@ import com.poker.web.dto.HandResponse;
 import com.poker.web.dto.TableEvent;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -65,7 +67,8 @@ public class HandService {
     private final DecisionEvaluatorService evaluator;
     private final ObjectMapper            objectMapper;
 
-    private final SimpMessagingTemplate broker;
+    private final SimpMessagingTemplate   broker;
+    private final ApplicationEventPublisher eventPublisher;
 
     /** Incremented once per {@link #startHand} call that succeeds. */
     private final Counter handsStartedCounter;
@@ -84,17 +87,19 @@ public class HandService {
                        DecisionEvaluatorService evaluator,
                        ObjectMapper             objectMapper,
                        MeterRegistry            meterRegistry,
-                       SimpMessagingTemplate    broker) {
-        this.tableRepo    = tableRepo;
-        this.seatRepo     = seatRepo;
-        this.handRepo     = handRepo;
-        this.snapshotRepo = snapshotRepo;
-        this.actionRepo   = actionRepo;
-        this.playerRepo   = playerRepo;
-        this.deckService  = deckService;
-        this.evaluator    = evaluator;
-        this.objectMapper = objectMapper;
-        this.broker       = broker;
+                       SimpMessagingTemplate    broker,
+                       ApplicationEventPublisher eventPublisher) {
+        this.tableRepo      = tableRepo;
+        this.seatRepo       = seatRepo;
+        this.handRepo       = handRepo;
+        this.snapshotRepo   = snapshotRepo;
+        this.actionRepo     = actionRepo;
+        this.playerRepo     = playerRepo;
+        this.deckService    = deckService;
+        this.evaluator      = evaluator;
+        this.objectMapper   = objectMapper;
+        this.broker         = broker;
+        this.eventPublisher = eventPublisher;
 
         this.handsStartedCounter  = Counter.builder("poker.hands.started")
                 .description("Total hands started")
@@ -213,6 +218,10 @@ public class HandService {
             WebSocketConfig.TABLE_TOPIC + tableId,
             TableEvent.from(tableId, hand.getId(), Street.PREFLOP.name(),
                             initialPot, actionSeatNo, seatStates));
+
+        // Notify the bot service so it can act if it is seated.
+        eventPublisher.publishEvent(
+            new HandActionEvent(tableId, hand.getId(), actionSeatNo, payload));
 
         return buildHandResponse(hand, table, seatStates, dealerSeatNo, sbSeatNo, bbSeatNo,
                                  payload.board(), requestingPlayerId);
@@ -357,6 +366,10 @@ public class HandService {
         broker.convertAndSend(
             WebSocketConfig.TABLE_TOPIC + tableId,
             TableEvent.from(tableId, handId, newStreet, newPot, nextActionSeat, updatedSeats));
+
+        // Notify the bot service so it can act if it is the next player.
+        eventPublisher.publishEvent(
+            new HandActionEvent(tableId, handId, nextActionSeat, after));
 
         return new ActionResponse(
             handId, nextVersion, newStreet, newPot, nextActionSeat,
