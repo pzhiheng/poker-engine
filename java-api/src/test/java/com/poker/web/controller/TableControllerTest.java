@@ -53,7 +53,9 @@ class TableControllerTest {
     @Autowired ObjectMapper   objectMapper;
     @Autowired JwtService     jwtService;
 
-    @MockitoBean TableService tableService;
+    @MockitoBean TableService     tableService;
+    @MockitoBean com.poker.service.BotPlayerService botPlayerService;
+    @MockitoBean com.poker.service.HandService      handService;
 
     /** Signed bearer token used by the write-path tests. */
     private String bearerToken;

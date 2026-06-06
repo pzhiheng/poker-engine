@@ -217,7 +217,9 @@ public class HandService {
         broker.convertAndSend(
             WebSocketConfig.TABLE_TOPIC + tableId,
             TableEvent.from(tableId, hand.getId(), Street.PREFLOP.name(),
-                            initialPot, actionSeatNo, seatStates));
+                            initialPot, actionSeatNo,
+                            payload.currentBet(), payload.board(), -1, null,
+                            seatStates));
 
         // Notify the bot service so it can act if it is seated.
         eventPublisher.publishEvent(
@@ -363,9 +365,13 @@ public class HandService {
 
         // Broadcast the updated table state so all STOMP subscribers see the change.
         UUID tableId = hand.getTable().getId();
+        String lastAction = actingSeat.username() + " " + req.actionType().name()
+            + (chipsCommitted > 0 ? " " + chipsCommitted : "");
         broker.convertAndSend(
             WebSocketConfig.TABLE_TOPIC + tableId,
-            TableEvent.from(tableId, handId, newStreet, newPot, nextActionSeat, updatedSeats));
+            TableEvent.from(tableId, handId, newStreet, newPot, nextActionSeat,
+                            resetBet, newBoard, actingSeat.seatNo(), lastAction,
+                            updatedSeats));
 
         // Notify the bot service so it can act if it is the next player.
         eventPublisher.publishEvent(
@@ -619,5 +625,32 @@ public class HandService {
 
         return new HandResponse(hand.getId(), table.getId(), hand.getStreet().name(),
             hand.getPotChips(), dealerSeat, sbSeat, bbSeat, boardCards, myHoleCards, seats);
+    }
+
+    /**
+     * Returns the current active hand for a table, personalised for the requesting player.
+     * Used to restore hand state after a page reload or reconnect.
+     *
+     * @throws BusinessRuleException if no hand is currently in progress
+     */
+    @Transactional(readOnly = true)
+    public HandResponse getCurrentHand(UUID tableId, UUID requestingPlayerId) {
+        PokerTable table = tableRepo.findById(tableId)
+            .orElseThrow(() -> new com.poker.exception.ResourceNotFoundException("Table not found: " + tableId));
+
+        Hand hand = handRepo.findByTableIdAndStatusIn(
+                tableId, List.of(HandStatus.IN_PROGRESS, HandStatus.SHOWDOWN))
+            .orElseThrow(() -> new BusinessRuleException("NO_ACTIVE_HAND", "No hand in progress at this table"));
+
+        HandSnapshot latest = snapshotRepo.findTopByHandIdOrderByVersionNoDesc(hand.getId())
+            .orElseThrow(() -> new IllegalStateException("No snapshot for hand " + hand.getId()));
+
+        SnapshotPayload payload = deserialise(latest.getPayload());
+
+        return buildHandResponse(hand, table,
+            payload.seats(),
+            payload.dealerSeat(), payload.sbSeat(), payload.bbSeat(),
+            payload.board(),
+            requestingPlayerId);
     }
 }

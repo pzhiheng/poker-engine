@@ -2,8 +2,10 @@ package com.poker.web.controller;
 
 import com.poker.domain.model.TableStatus;
 import com.poker.service.BotPlayerService;
+import com.poker.service.HandService;
 import com.poker.service.TableService;
 import com.poker.web.dto.CreateTableRequest;
+import com.poker.web.dto.HandResponse;
 import com.poker.web.dto.JoinSeatRequest;
 import com.poker.web.dto.SeatResponse;
 import com.poker.web.dto.TableDetailResponse;
@@ -40,10 +42,13 @@ public class TableController {
 
     private final TableService    tableService;
     private final BotPlayerService botPlayerService;
+    private final HandService     handService;
 
-    public TableController(TableService tableService, BotPlayerService botPlayerService) {
+    public TableController(TableService tableService, BotPlayerService botPlayerService,
+                           HandService handService) {
         this.tableService    = tableService;
         this.botPlayerService = botPlayerService;
+        this.handService     = handService;
     }
 
     // ── GET /tables ───────────────────────────────────────────────────────────
@@ -112,6 +117,19 @@ public class TableController {
         JoinSeatRequest joinReq = new JoinSeatRequest(
             botPlayerService.getBotPlayerId(), req.seatNo(), req.buyIn());
         return tableService.joinSeat(id, joinReq);
+    }
+
+    // ── GET /tables/{id}/hand ─────────────────────────────────────────────────
+
+    @Operation(summary = "Get current active hand",
+               description = "Returns the active hand state for the table, with hole cards personalised for the requester. Used to restore state after a page reload. **Requires JWT.** Returns 422 if no hand is in progress.")
+    @ApiResponse(responseCode = "200", description = "Current hand state")
+    @ApiResponse(responseCode = "422", description = "No hand currently in progress")
+    @GetMapping("/{id}/hand")
+    public HandResponse getCurrentHand(
+            @Parameter(description = "Table UUID") @PathVariable UUID id,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal UUID playerId) {
+        return handService.getCurrentHand(id, playerId);
     }
 
     /** Minimal request body for adding a bot — no playerId needed. */

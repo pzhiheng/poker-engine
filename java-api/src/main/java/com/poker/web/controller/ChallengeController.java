@@ -1,6 +1,7 @@
 package com.poker.web.controller;
 
 import com.poker.domain.model.Challenge;
+import com.poker.domain.model.ChallengeSet;
 import com.poker.service.ChallengeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -57,6 +58,32 @@ public class ChallengeController {
                                   c.explanation(), c.keyPoints());
     }
 
+    // ── GET /challenges/sets ──────────────────────────────────────────────────
+
+    @Operation(summary = "List challenge sets",
+               description = "Returns all themed quiz sets with their challenge count.")
+    @GetMapping("/sets")
+    public List<SetListItem> listSets() {
+        return challengeService.listSets().stream()
+            .map(s -> new SetListItem(s.id(), s.title(), s.description(), s.icon(),
+                                      s.difficulty(), s.challengeIds().size()))
+            .toList();
+    }
+
+    // ── GET /challenges/sets/{id} ─────────────────────────────────────────────
+
+    @Operation(summary = "Get a challenge set with all its challenges",
+               description = "Returns set metadata plus the full ordered list of challenges (no answers).")
+    @GetMapping("/sets/{id}")
+    public SetDetail getSet(@PathVariable String id) {
+        ChallengeSet set = challengeService.findSetById(id);
+        List<ChallengeDetail> challenges = set.challengeIds().stream()
+            .map(cid -> ChallengeDetail.from(challengeService.findById(cid)))
+            .toList();
+        return new SetDetail(set.id(), set.title(), set.description(), set.icon(),
+                             set.difficulty(), challenges);
+    }
+
     // ── Nested DTOs ───────────────────────────────────────────────────────────
 
     /** Lightweight list item — no answer or explanation. */
@@ -88,4 +115,13 @@ public class ChallengeController {
     public record AnswerResponse(
             boolean correct, int correctIndex, String correctOption,
             String explanation, java.util.List<String> keyPoints) {}
+
+    public record SetListItem(
+            String id, String title, String description,
+            String icon, String difficulty, int count) {}
+
+    public record SetDetail(
+            String id, String title, String description,
+            String icon, String difficulty,
+            java.util.List<ChallengeDetail> challenges) {}
 }

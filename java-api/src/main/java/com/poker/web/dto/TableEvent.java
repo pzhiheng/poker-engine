@@ -14,11 +14,15 @@ import java.util.UUID;
  * without revealing private information.
  */
 public record TableEvent(
-    UUID         tableId,
-    UUID         handId,
-    String       street,
-    int          potChips,
-    int          nextActionSeat,
+    UUID           tableId,
+    UUID           handId,
+    String         street,
+    int            potChips,
+    int            nextActionSeat,
+    int            currentBet,       // chips every player must match this street
+    List<String>   boardCards,       // 0/3/4/5 community cards (broadcast-safe)
+    int            lastActionSeat,   // seat that just acted (-1 = hand start)
+    String         lastAction,       // e.g. "alice RAISED 60", null on hand start
     List<SeatView> seats
 ) {
     /** Per-seat state visible to all connected clients. */
@@ -33,11 +37,16 @@ public record TableEvent(
     /** Build a broadcast-safe event from action-response components. */
     public static TableEvent from(UUID tableId, UUID handId, String street,
                                   int potChips, int nextActionSeat,
+                                  int currentBet,
+                                  List<String> boardCards,
+                                  int lastActionSeat,
+                                  String lastAction,
                                   List<SeatState> seats) {
         var views = seats.stream()
             .map(s -> new SeatView(
                 s.seatNo(), s.username(), s.stackChips(), s.folded(), s.allIn()))
             .toList();
-        return new TableEvent(tableId, handId, street, potChips, nextActionSeat, views);
+        return new TableEvent(tableId, handId, street, potChips, nextActionSeat,
+                              currentBet, boardCards, lastActionSeat, lastAction, views);
     }
 }

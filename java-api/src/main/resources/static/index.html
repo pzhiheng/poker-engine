@@ -13,58 +13,65 @@
     * { font-family: 'Inter', system-ui, sans-serif; }
     body { background: #060D1A; }
 
-    /* ── Oval poker table ── */
     .poker-table {
       background: radial-gradient(ellipse at 50% 40%, #1a7a45 0%, #0e5c30 55%, #073d1f 100%);
       border-radius: 50%;
       border: 10px solid #8B5E2A;
-      box-shadow:
-        0 0 0 3px #5a3a14,
-        0 0 0 6px #8B5E2A,
-        0 20px 60px rgba(0,0,0,0.8),
-        inset 0 0 80px rgba(0,0,0,0.5);
+      box-shadow: 0 0 0 3px #5a3a14, 0 0 0 6px #8B5E2A,
+                  0 20px 60px rgba(0,0,0,.8), inset 0 0 80px rgba(0,0,0,.5);
     }
 
-    /* ── Cards ── */
+    /* ── Real playing cards ── */
     .card {
-      display:inline-flex; flex-direction:column; justify-content:space-between;
-      width:38px; height:54px;
-      background: linear-gradient(135deg,#fff 0%,#f8f8f8 100%);
-      border-radius:5px;
-      border:1px solid #ddd;
-      box-shadow: 0 2px 6px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.3);
-      font-size:12px; font-weight:700;
-      padding:3px 4px; user-select:none; line-height:1;
+      position: relative; display: inline-block;
+      width: 48px; height: 68px;
+      background: linear-gradient(160deg,#fff 0%,#f9f9f9 100%);
+      border-radius: 7px; border: 1px solid #d1d5db;
+      box-shadow: 0 4px 10px rgba(0,0,0,.45), 0 1px 3px rgba(0,0,0,.3),
+                  inset 0 0 0 1px rgba(255,255,255,.8);
+      user-select: none; vertical-align: middle;
+      font-family: 'Georgia','Times New Roman',serif;
     }
-    .card.red  { color:#E53935; }
-    .card.black { color:#1a1a1a; }
+    .card-corner {
+      position: absolute; font-size: 11px; font-weight: 700;
+      line-height: 1.1; text-align: center;
+    }
+    .card-corner.tl { top: 3px; left: 4px; }
+    .card-corner.br { bottom: 3px; right: 4px; transform: rotate(180deg); }
+    .card-center {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%,-50%); font-size: 22px; line-height: 1;
+    }
+    .card.red  .card-corner, .card.red  .card-center { color: #C0392B; }
+    .card.black .card-corner, .card.black .card-center { color: #1a1a1a; }
     .card-back {
-      display:inline-flex; width:38px; height:54px;
-      border-radius:5px;
-      background: repeating-linear-gradient(135deg,#1a3a6e,#1a3a6e 3px,#1e4a8a 3px,#1e4a8a 6px);
-      border:1px solid #0f2a55;
-      box-shadow:0 2px 6px rgba(0,0,0,.4);
+      display: inline-block; width: 48px; height: 68px;
+      border-radius: 7px; vertical-align: middle;
+      background: repeating-conic-gradient(#1a3a6e 0% 25%, #1e4a8a 0% 50%) 0 / 10px 10px;
+      border: 1px solid #0f2a55;
+      box-shadow: 0 4px 10px rgba(0,0,0,.45), 0 1px 3px rgba(0,0,0,.3);
     }
     .card-placeholder {
-      display:inline-flex; width:38px; height:54px;
-      border-radius:5px; border:2px dashed rgba(255,255,255,0.15);
+      display: inline-block; width: 48px; height: 68px;
+      border-radius: 7px; border: 2px dashed rgba(255,255,255,.18);
+      vertical-align: middle;
     }
 
-    /* ── Seat animations ── */
-    .seat-acting {
-      animation: glow 1.2s ease-in-out infinite;
+    /* ── Animations ── */
+    .seat-acting { animation: seatGlow 1.2s ease-in-out infinite !important; will-change: box-shadow; }
+    @keyframes seatGlow {
+      0%,100% { box-shadow: 0 0 0 0 rgba(0,230,118,.5), inset 0 0 0 0 rgba(0,230,118,.1); }
+      50%      { box-shadow: 0 0 0 8px rgba(0,230,118,.15), inset 0 0 8px rgba(0,230,118,.08); }
     }
-    @keyframes glow {
-      0%,100% { box-shadow: 0 0 0 0 rgba(0,230,118,.5), 0 0 0 0 rgba(0,230,118,.2); }
-      50%      { box-shadow: 0 0 0 6px rgba(0,230,118,.2), 0 0 12px 4px rgba(0,230,118,.15); }
-    }
-
-    /* ── Feedback panel ── */
-    .fb-slide { animation: slideUp .35s cubic-bezier(.16,1,.3,1); }
-    @keyframes slideUp {
-      from { transform:translateY(20px); opacity:0; }
-      to   { transform:translateY(0);    opacity:1; }
-    }
+    .fb-panel { transition: opacity .35s cubic-bezier(.16,1,.3,1), transform .35s cubic-bezier(.16,1,.3,1); }
+    .fb-panel.fb-hidden { opacity:0; transform:translateY(14px); pointer-events:none; }
+    .fb-panel.fb-shown  { opacity:1; transform:translateY(0);    pointer-events:auto; }
+    .view-fade { animation: viewFade .2s ease-out; }
+    @keyframes viewFade { from { opacity:0; } to { opacity:1; } }
+    .card-deal { animation: cardDeal .3s cubic-bezier(.34,1.56,.64,1); }
+    @keyframes cardDeal { from { transform:scale(.5) translateY(-20px); opacity:0; } to { transform:none; opacity:1; } }
+    .action-flash { animation: flash .5s ease-out; }
+    @keyframes flash { 0%,100%{} 30%{box-shadow:0 0 0 4px rgba(255,220,0,.6);} }
 
     /* ── Auth tabs ── */
     .tab-on  { border-bottom:2px solid #00E676; color:#00E676 !important; }
@@ -74,28 +81,9 @@
     .pill-on  { background:#004d2b; color:#00E676; border:1px solid #00E676; }
     .pill-off { background:transparent; color:#6b7280; border:1px solid #374151; }
 
-    /* ── Lobby table card hover ── */
-    .table-card {
-      transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
-    }
-    .table-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 8px 24px rgba(0,0,0,.5);
-      border-color: #00C853 !important;
-    }
-
-    /* ── Challenge card ── */
-    .challenge-card { transition: transform .15s, box-shadow .15s, border-color .15s; }
-    .challenge-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 8px 24px rgba(0,0,0,.5);
-      border-color: #7C3AED !important;
-    }
-
-    /* ── Buttons ── */
-    .btn { transition: all .15s ease; }
-    .btn:hover { filter: brightness(1.15); }
-    .btn:active { transform: scale(.97); }
+    /* ── Hover lift cards ── */
+    .hover-lift { transition:transform .15s,box-shadow .15s,border-color .15s; }
+    .hover-lift:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(0,0,0,.5); }
 
     /* ── Stat cards ── */
     .stat-card { background:#0d1f35; border:1px solid #1e3a5f; border-radius:14px; padding:16px; text-align:center; }
@@ -106,15 +94,34 @@
     .inp {
       background:#0d1f35; border:1px solid #1e3a5f; border-radius:12px;
       padding:10px 14px; font-size:.875rem; color:#e2e8f0; width:100%;
-      transition: border-color .15s;
+      transition:border-color .15s;
     }
     .inp:focus { outline:none; border-color:#00C853; }
+
+    /* ── Tutorial sections ── */
+    .tut-section { background:#0a1628; border:1px solid #1e3a5f; border-radius:16px; padding:24px; margin-bottom:20px; }
+    .tut-h { font-size:1.1rem; font-weight:700; margin-bottom:12px; }
+    .tut-pill { display:inline-block; padding:3px 10px; border-radius:20px; font-size:.75rem; font-weight:600; margin-right:6px; margin-bottom:6px; }
+    .hand-rank { display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid #1e3a5f; }
+
+    /* ── Action log ── */
+    #action-log-list { max-height:120px; overflow-y:auto; }
+
+    /* ── Toast ── */
+    #action-toast {
+      position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(20px);
+      background:#1e3a5f; border:1px solid #3b82f6; border-radius:12px;
+      padding:10px 18px; font-size:.875rem; color:#93c5fd;
+      opacity:0; transition:opacity .25s, transform .25s;
+      pointer-events:none; z-index:100; white-space:nowrap;
+    }
+    #action-toast.toast-show { opacity:1; transform:translateX(-50%) translateY(0); }
   </style>
 </head>
 <body class="text-gray-100 min-h-screen">
 
 <!-- ═══════ AUTH ═══════ -->
-<div id="view-auth" class="hidden min-h-screen flex items-center justify-center p-4"
+<div id="view-auth" class="hidden min-h-screen flex items-center justify-center p-4 view-fade"
      style="background:radial-gradient(ellipse at 50% 0%,#0a2218 0%,#060D1A 60%)">
   <div class="w-full max-w-sm rounded-2xl border border-gray-800 p-8 shadow-2xl" style="background:#0a1628">
     <div class="text-center mb-6">
@@ -127,16 +134,12 @@
       <button id="tab-register" onclick="switchTab('register')" class="flex-1 pb-3 text-sm font-medium tab-off">Register</button>
     </div>
     <form onsubmit="submitAuth(event)">
-      <div class="mb-4">
-        <label class="block text-xs text-gray-400 mb-1.5">Username</label>
-        <input id="auth-user" type="text" autocomplete="username" required placeholder="alice" class="inp">
-      </div>
-      <div class="mb-5">
-        <label class="block text-xs text-gray-400 mb-1.5">Password</label>
-        <input id="auth-pass" type="password" autocomplete="current-password" required placeholder="••••••••" class="inp">
-      </div>
+      <div class="mb-4"><label class="block text-xs text-gray-400 mb-1.5">Username</label>
+        <input id="auth-user" type="text" autocomplete="username" required placeholder="alice" class="inp"></div>
+      <div class="mb-5"><label class="block text-xs text-gray-400 mb-1.5">Password</label>
+        <input id="auth-pass" type="password" autocomplete="current-password" required placeholder="••••••••" class="inp"></div>
       <div id="auth-err" class="hidden mb-4 p-3 rounded-xl text-sm text-red-300" style="background:#2a0a0a;border:1px solid #7f1d1d"></div>
-      <button type="submit" id="auth-btn" class="btn w-full rounded-xl py-2.5 text-sm font-semibold" style="background:#00C853;color:#000">Login</button>
+      <button type="submit" id="auth-btn" class="w-full rounded-xl py-2.5 text-sm font-semibold" style="background:#00C853;color:#000">Login</button>
     </form>
   </div>
 </div>
@@ -147,20 +150,21 @@
     <h1 class="text-lg font-bold" style="color:#00E676">♠ Poker Engine</h1>
     <div class="flex items-center gap-3">
       <span id="lobby-user" class="text-sm text-gray-400"></span>
-      <button onclick="navProfile(app.playerId)" class="btn text-xs rounded-lg px-3 py-1.5 border border-gray-700 hover:border-green-500 transition-colors">My Profile</button>
-      <button onclick="navChallenges()" class="btn text-xs rounded-lg px-3 py-1.5 border border-gray-700 hover:border-purple-500 transition-colors">🎯 Challenges</button>
+      <button onclick="navProfile(app.playerId)" class="text-xs rounded-lg px-3 py-1.5 border border-gray-700 hover:border-green-500 transition-colors">My Profile</button>
+      <button onclick="navChallenges()" class="text-xs rounded-lg px-3 py-1.5 border border-gray-700 hover:border-purple-500 transition-colors">🎯 Challenges</button>
+      <button onclick="navTutorial()" class="text-xs rounded-lg px-3 py-1.5 border border-gray-700 hover:border-blue-500 transition-colors">📖 How to Play</button>
       <button onclick="logout()" class="text-xs text-gray-500 hover:text-white transition-colors">Logout</button>
     </div>
   </header>
   <main class="flex-1 p-6 max-w-5xl mx-auto w-full">
     <div class="flex items-center justify-between mb-6">
       <h2 class="text-xl font-semibold">Tables</h2>
-      <button onclick="toggleCreate()" class="btn rounded-xl px-4 py-2 text-sm font-semibold" style="background:#00C853;color:#000">+ New Table</button>
+      <button onclick="toggleCreate()" class="rounded-xl px-4 py-2 text-sm font-semibold" style="background:#00C853;color:#000">+ New Table</button>
     </div>
     <div class="flex gap-2 mb-5">
-      <button id="f-all"     onclick="setFilter('all')"     class="btn text-xs rounded-full px-3 py-1.5 pill-on">All</button>
-      <button id="f-WAITING" onclick="setFilter('WAITING')" class="btn text-xs rounded-full px-3 py-1.5 pill-off">Waiting</button>
-      <button id="f-IN_HAND" onclick="setFilter('IN_HAND')" class="btn text-xs rounded-full px-3 py-1.5 pill-off">In Hand</button>
+      <button id="f-all"     onclick="setFilter('all')"     class="text-xs rounded-full px-3 py-1.5 pill-on">All</button>
+      <button id="f-WAITING" onclick="setFilter('WAITING')" class="text-xs rounded-full px-3 py-1.5 pill-off">Waiting</button>
+      <button id="f-IN_HAND" onclick="setFilter('IN_HAND')" class="text-xs rounded-full px-3 py-1.5 pill-off">In Hand</button>
     </div>
     <div id="create-form" class="hidden mb-6 rounded-2xl border border-gray-700 p-5" style="background:#0a1628">
       <h3 class="font-semibold text-sm mb-4">New Table</h3>
@@ -171,8 +175,8 @@
       </div>
       <div id="c-err" class="hidden mt-3 text-sm text-red-400"></div>
       <div class="flex gap-3 mt-4">
-        <button onclick="createTable()" class="btn rounded-xl px-4 py-2 text-sm font-semibold" style="background:#00C853;color:#000">Create</button>
-        <button onclick="toggleCreate()" class="btn rounded-xl px-4 py-2 text-sm text-gray-300 border border-gray-700">Cancel</button>
+        <button onclick="createTable()" class="rounded-xl px-4 py-2 text-sm font-semibold" style="background:#00C853;color:#000">Create</button>
+        <button onclick="toggleCreate()" class="rounded-xl px-4 py-2 text-sm border border-gray-700 text-gray-300">Cancel</button>
       </div>
     </div>
     <div id="tables-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
@@ -183,9 +187,9 @@
 <!-- ═══════ TABLE ═══════ -->
 <div id="view-table" class="hidden min-h-screen flex flex-col">
   <header class="sticky top-0 z-10 border-b border-gray-800 px-4 py-3 flex items-center justify-between" style="background:#07101F;backdrop-filter:blur(12px)">
-    <button onclick="goLobby()" class="btn text-sm text-gray-400 hover:text-white">← Lobby</button>
+    <button onclick="goLobby()" class="text-sm text-gray-400 hover:text-white transition-colors">← Lobby</button>
     <span id="t-title" class="font-semibold text-sm"></span>
-    <button onclick="navProfile(app.playerId)" class="btn text-xs rounded-lg px-3 py-1.5 border border-gray-700 hover:border-green-500">My Profile</button>
+    <button onclick="navProfile(app.playerId)" class="text-xs rounded-lg px-3 py-1.5 border border-gray-700 hover:border-green-500">My Profile</button>
   </header>
   <div class="flex-1 flex flex-col items-center p-4 gap-4 overflow-y-auto">
 
@@ -212,11 +216,11 @@
     <div class="flex items-center gap-4 rounded-2xl border border-gray-800 px-4 py-3 w-full max-w-2xl" style="background:#0a1628">
       <div class="flex-1">
         <div class="text-xs text-gray-500 mb-1">My Cards</div>
-        <div id="my-cards" class="flex gap-1 min-h-[46px] items-center"></div>
+        <div id="my-cards" class="flex gap-1 min-h-[50px] items-center"></div>
       </div>
       <div class="flex gap-2 items-center">
-        <button id="start-btn" onclick="startHand()" class="btn hidden rounded-xl px-4 py-2 text-sm font-semibold" style="background:#00C853;color:#000">Start Hand</button>
-        <button id="bot-btn"   onclick="addBot()"    class="btn hidden rounded-xl px-4 py-2 text-sm font-semibold border border-purple-600 text-purple-300 hover:bg-purple-900/30">+ Add Bot</button>
+        <button id="start-btn" onclick="startHand()" class="hidden rounded-xl px-4 py-2 text-sm font-semibold" style="background:#00C853;color:#000">Start Hand</button>
+        <button id="bot-btn"   onclick="addBot()"    class="hidden rounded-xl px-4 py-2 text-sm font-semibold border border-purple-600 text-purple-300 hover:bg-purple-900/30">+ Add Bot</button>
       </div>
       <div id="t-conn" class="text-xs text-gray-600 shrink-0"></div>
     </div>
@@ -225,21 +229,21 @@
     <div id="action-panel" class="hidden w-full max-w-2xl rounded-2xl border p-4" style="background:#0a1628;border-color:#00C853;box-shadow:0 0 20px rgba(0,200,83,.12)">
       <div class="text-xs font-bold mb-3 uppercase tracking-wider" style="color:#00E676">▶ Your Turn</div>
       <div class="flex flex-wrap gap-2 items-center">
-        <button onclick="act('FOLD',0)" class="btn rounded-full px-4 py-2 text-sm font-medium" style="background:#7f1d1d;color:#fca5a5">Fold</button>
-        <button id="btn-check" onclick="act('CHECK',0)" class="btn rounded-full px-4 py-2 text-sm font-medium border border-gray-600 text-gray-200">Check</button>
-        <button id="btn-call"  onclick="act('CALL',0)"  class="btn rounded-full px-4 py-2 text-sm font-medium" style="background:#1e3a8a;color:#93c5fd">Call</button>
+        <button onclick="act('FOLD',0)" class="rounded-full px-4 py-2 text-sm font-medium" style="background:#7f1d1d;color:#fca5a5">Fold</button>
+        <button id="btn-check" onclick="act('CHECK',0)" class="rounded-full px-4 py-2 text-sm font-medium border border-gray-600 text-gray-200">Check</button>
+        <button id="btn-call"  onclick="act('CALL',0)"  class="hidden rounded-full px-4 py-2 text-sm font-medium" style="background:#1e3a8a;color:#93c5fd">Call</button>
         <div class="flex items-center gap-1.5">
           <input id="bet-amt" type="number" min="1" placeholder="Chips" class="inp" style="width:90px">
-          <button onclick="act('BET',  +id('bet-amt').value||0)" class="btn rounded-full px-3 py-2 text-sm font-medium" style="background:#78350f;color:#fde68a">Bet</button>
-          <button onclick="act('RAISE',+id('bet-amt').value||0)" class="btn rounded-full px-3 py-2 text-sm font-medium" style="background:#7c2d12;color:#fdba74">Raise</button>
+          <button onclick="act('BET',  +id('bet-amt').value||0)" class="rounded-full px-3 py-2 text-sm font-medium" style="background:#78350f;color:#fde68a">Bet</button>
+          <button onclick="act('RAISE',+id('bet-amt').value||0)" class="rounded-full px-3 py-2 text-sm font-medium" style="background:#7c2d12;color:#fdba74">Raise</button>
         </div>
-        <button onclick="act('ALL_IN',myStack())" class="btn rounded-full px-4 py-2 text-sm font-medium" style="background:#4c1d95;color:#c4b5fd">All-In</button>
+        <button onclick="act('ALL_IN',myStack())" class="rounded-full px-4 py-2 text-sm font-medium" style="background:#4c1d95;color:#c4b5fd">All-In</button>
       </div>
       <div id="act-err" class="hidden mt-2 text-sm text-red-400"></div>
     </div>
 
     <!-- Coaching feedback panel -->
-    <div id="fb-panel" class="hidden w-full max-w-2xl fb-slide">
+    <div id="fb-panel" class="fb-panel fb-hidden w-full max-w-2xl">
       <div id="fb-inner" class="rounded-2xl border-2 p-5" style="background:#0a1628">
         <div class="flex items-start justify-between mb-3">
           <div class="flex flex-wrap items-center gap-2">
@@ -250,15 +254,13 @@
         </div>
         <p id="fb-exp" class="text-sm leading-relaxed mb-5" style="color:#cbd5e1"></p>
         <div class="mb-5">
-          <div class="flex justify-between text-xs text-gray-500 mb-2">
-            <span>Win Equity</span><span id="fb-eq-lbl" class="font-semibold text-white"></span>
-          </div>
+          <div class="flex justify-between text-xs text-gray-500 mb-2"><span>Win Equity</span><span id="fb-eq-lbl" class="font-semibold text-white"></span></div>
           <div class="rounded-full h-3 overflow-hidden mb-2" style="background:#1e3a5f">
             <div id="fb-eq-bar" class="h-full rounded-full transition-all duration-700 ease-out"></div>
           </div>
           <div class="flex justify-between text-xs">
             <span id="fb-po-lbl" class="text-gray-500"></span>
-            <span id="fb-edge"   class="font-semibold"></span>
+            <span id="fb-edge" class="font-semibold"></span>
           </div>
         </div>
         <div id="fb-gto" class="hidden rounded-xl p-4" style="background:#071428;border:1px solid #1e3a5f">
@@ -267,22 +269,28 @@
         </div>
       </div>
     </div>
+
+    <!-- Action log -->
+    <div class="w-full max-w-2xl rounded-2xl border border-gray-800 p-3" style="background:#07101F">
+      <div class="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">📋 Action Log</div>
+      <div id="action-log-list" class="space-y-1">
+        <div class="text-xs text-gray-600 italic">No actions yet — start a hand.</div>
+      </div>
+    </div>
+
   </div>
 </div>
 
 <!-- ═══════ PROFILE ═══════ -->
 <div id="view-profile" class="hidden min-h-screen flex flex-col">
   <header class="sticky top-0 z-10 border-b border-gray-800 px-4 py-3 flex items-center gap-3" style="background:#07101F">
-    <button onclick="history.back()" class="btn text-sm text-gray-400 hover:text-white">← Back</button>
+    <button onclick="history.back()" class="text-sm text-gray-400 hover:text-white">← Back</button>
     <h2 class="font-semibold">Player Profile</h2>
   </header>
   <main class="flex-1 p-6 max-w-3xl mx-auto w-full">
     <div class="flex items-center gap-4 mb-8">
       <div id="p-type" class="px-4 py-2 rounded-xl text-sm font-bold border" style="background:#071428;border-color:#1e3a5f;color:#38bdf8"></div>
-      <div>
-        <div id="p-name" class="font-semibold text-lg"></div>
-        <div id="p-desc" class="text-sm text-gray-500 mt-0.5"></div>
-      </div>
+      <div><div id="p-name" class="font-semibold text-lg"></div><div id="p-desc" class="text-sm text-gray-500 mt-0.5"></div></div>
     </div>
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
       <div class="stat-card"><div id="st-hands" class="stat-val text-white"></div><div class="stat-lbl">Hands</div></div>
@@ -300,82 +308,246 @@
   </main>
 </div>
 
-<!-- ═══════ CHALLENGES LIST ═══════ -->
+<!-- ═══════ CHALLENGES (SET LIST) ═══════ -->
 <div id="view-challenges" class="hidden min-h-screen flex flex-col">
   <header class="sticky top-0 z-10 border-b border-gray-800 px-4 py-3 flex items-center gap-3" style="background:#07101F">
-    <button onclick="goLobby()" class="btn text-sm text-gray-400 hover:text-white">← Lobby</button>
+    <button onclick="goLobby()" class="text-sm text-gray-400 hover:text-white">← Lobby</button>
     <h2 class="font-semibold">🎯 Poker Challenges</h2>
   </header>
   <main class="flex-1 p-6 max-w-5xl mx-auto w-full">
-    <p class="text-gray-400 text-sm mb-6">Test your GTO knowledge. Each scenario puts you in a real hand situation — choose the correct action.</p>
+    <p class="text-gray-400 text-sm mb-6">Choose a training set and work through the questions. Get a score and player tendency analysis at the end.</p>
     <div id="chal-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
   </main>
 </div>
 
-<!-- ═══════ CHALLENGE DETAIL ═══════ -->
-<div id="view-challenge" class="hidden min-h-screen flex flex-col">
-  <header class="sticky top-0 z-10 border-b border-gray-800 px-4 py-3 flex items-center gap-3" style="background:#07101F">
-    <button onclick="navChallenges()" class="btn text-sm text-gray-400 hover:text-white">← Challenges</button>
-    <h2 id="ch-title" class="font-semibold text-sm"></h2>
-  </header>
-  <main class="flex-1 p-6 max-w-2xl mx-auto w-full">
-    <!-- Scenario info bar -->
-    <div class="rounded-2xl border border-gray-800 p-4 mb-6 flex flex-wrap gap-4 items-center" style="background:#0a1628">
-      <div>
-        <div class="text-xs text-gray-500 mb-1">Position</div>
-        <div id="ch-pos" class="font-bold text-sm" style="color:#00E676"></div>
-      </div>
-      <div>
-        <div class="text-xs text-gray-500 mb-1">Street</div>
-        <div id="ch-street" class="font-bold text-sm text-white"></div>
-      </div>
-      <div>
-        <div class="text-xs text-gray-500 mb-1">Pot</div>
-        <div id="ch-pot" class="font-bold text-sm" style="color:#FFD700"></div>
-      </div>
-      <div id="ch-call-wrap" class="hidden">
-        <div class="text-xs text-gray-500 mb-1">To Call</div>
-        <div id="ch-call" class="font-bold text-sm text-red-400"></div>
-      </div>
-      <div>
-        <div class="text-xs text-gray-500 mb-1">Stack</div>
-        <div id="ch-stack" class="font-bold text-sm text-gray-200"></div>
-      </div>
+<!-- ═══════ CHALLENGE SET (QUIZ SESSION) ═══════ -->
+<div id="view-challenge-set" class="hidden min-h-screen flex flex-col">
+  <header class="sticky top-0 z-10 border-b border-gray-800 px-4 py-3" style="background:#07101F">
+    <div class="flex items-center justify-between mb-2">
+      <button onclick="navChallenges()" class="text-sm text-gray-400 hover:text-white">← Sets</button>
+      <span id="cs-set-title" class="font-semibold text-sm"></span>
+      <span id="cs-progress" class="text-xs text-gray-400"></span>
     </div>
+    <!-- Progress bar -->
+    <div class="rounded-full h-1.5" style="background:#1e3a5f">
+      <div id="cs-bar" class="h-full rounded-full transition-all duration-500" style="background:#00C853;width:0%"></div>
+    </div>
+  </header>
 
-    <!-- Mini table: board + hole cards -->
-    <div class="rounded-2xl border border-gray-800 mb-6 overflow-hidden" style="background:#071428">
+  <!-- Active question -->
+  <div id="cs-question" class="flex-1 p-6 max-w-2xl mx-auto w-full">
+    <div class="rounded-2xl border border-gray-800 p-4 mb-4 flex flex-wrap gap-4 items-center" style="background:#0a1628">
+      <div><div class="text-xs text-gray-500 mb-1">Position</div><div id="cs-pos" class="font-bold text-sm" style="color:#00E676"></div></div>
+      <div><div class="text-xs text-gray-500 mb-1">Street</div><div id="cs-street" class="font-bold text-sm text-white"></div></div>
+      <div><div class="text-xs text-gray-500 mb-1">Pot</div><div id="cs-pot" class="font-bold text-sm" style="color:#FFD700"></div></div>
+      <div id="cs-call-wrap" class="hidden"><div class="text-xs text-gray-500 mb-1">To Call</div><div id="cs-call" class="font-bold text-sm text-red-400"></div></div>
+      <div><div class="text-xs text-gray-500 mb-1">Stack</div><div id="cs-stack" class="font-bold text-sm text-gray-200"></div></div>
+    </div>
+    <div class="rounded-2xl border border-gray-800 mb-4 overflow-hidden" style="background:#071428">
       <div class="poker-table relative mx-auto" style="width:100%;aspect-ratio:2.5/1;border-radius:0;border:none;box-shadow:none">
         <div class="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
-          <div>
-            <div class="text-xs text-center mb-1.5" style="color:rgba(255,255,255,.4)">Board</div>
-            <div id="ch-board" class="flex gap-1.5 justify-center"></div>
-          </div>
+          <div><div class="text-xs text-center mb-1.5" style="color:rgba(255,255,255,.4)">Board</div><div id="cs-board" class="flex gap-1.5 justify-center"></div></div>
         </div>
       </div>
       <div class="px-4 py-3 border-t border-gray-800">
         <div class="text-xs text-gray-500 mb-1.5">Your Hand</div>
-        <div id="ch-hole" class="flex gap-1.5"></div>
+        <div id="cs-hole" class="flex gap-1.5"></div>
+      </div>
+    </div>
+    <p id="cs-desc" class="text-sm text-gray-300 leading-relaxed mb-5 p-4 rounded-xl border border-gray-800" style="background:#0a1628"></p>
+    <div id="cs-opts" class="space-y-3 mb-5"></div>
+    <!-- Result for this question -->
+    <div id="cs-result" class="hidden rounded-2xl border p-5 mb-4">
+      <div id="cs-verdict" class="text-lg font-bold mb-2"></div>
+      <div id="cs-correct-lbl" class="text-sm mb-3"></div>
+      <p id="cs-explain" class="text-sm text-gray-300 leading-relaxed mb-3"></p>
+      <div id="cs-kp-wrap" class="hidden rounded-xl p-4" style="background:#071428;border:1px solid #1e3a5f">
+        <div class="text-xs font-semibold uppercase tracking-wider mb-2 text-gray-500">Key GTO Concepts</div>
+        <ul id="cs-kp" class="space-y-1.5"></ul>
+      </div>
+    </div>
+    <button id="cs-next-btn" onclick="nextInSet()" class="hidden w-full rounded-xl py-2.5 text-sm font-semibold" style="background:#7C3AED;color:#fff"></button>
+  </div>
+
+  <!-- Score screen (hidden until set complete) -->
+  <div id="cs-score" class="hidden flex-1 p-6 max-w-2xl mx-auto w-full">
+    <div class="text-center mb-8">
+      <div id="score-stars" class="text-5xl mb-3"></div>
+      <div class="text-4xl font-bold mb-1" style="color:#00E676"><span id="score-val"></span></div>
+      <div class="text-gray-400 text-sm" id="score-lbl"></div>
+    </div>
+    <!-- Per-question summary -->
+    <div class="rounded-2xl border border-gray-800 p-4 mb-6" style="background:#0a1628">
+      <div class="text-xs font-semibold uppercase tracking-wider mb-3 text-gray-500">Question Review</div>
+      <div id="score-review" class="space-y-2"></div>
+    </div>
+    <!-- Player tendencies -->
+    <div class="rounded-2xl border p-5 mb-6" id="score-analysis-card" style="background:#0a1628;border-color:#1e3a5f">
+      <div class="text-sm font-semibold mb-3" style="color:#38bdf8">Your Tendencies in This Set</div>
+      <div id="score-tendencies" class="space-y-2 mb-4"></div>
+      <div class="text-sm font-semibold mb-2 text-gray-300">Improvement Directions</div>
+      <ul id="score-improvements" class="space-y-1.5"></ul>
+      <div id="score-rec" class="mt-4 text-xs text-gray-500"></div>
+    </div>
+    <div class="flex gap-3">
+      <button onclick="replaySet()" class="flex-1 rounded-xl py-2.5 text-sm font-semibold border border-gray-700 text-gray-300">Play Again</button>
+      <button onclick="navChallenges()" class="flex-1 rounded-xl py-2.5 text-sm font-semibold" style="background:#7C3AED;color:#fff">All Sets</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ TUTORIAL ═══════ -->
+<div id="view-tutorial" class="hidden min-h-screen flex flex-col">
+  <header class="sticky top-0 z-10 border-b border-gray-800 px-4 py-3 flex items-center gap-3" style="background:#07101F">
+    <button onclick="goLobby()" class="text-sm text-gray-400 hover:text-white">← Lobby</button>
+    <h2 class="font-semibold">📖 How to Play</h2>
+  </header>
+  <main class="flex-1 p-6 max-w-3xl mx-auto w-full">
+
+    <div class="tut-section">
+      <div class="tut-h" style="color:#00E676">1 — Texas Hold'em Basics</div>
+      <p class="text-sm text-gray-300 leading-relaxed mb-4">Texas Hold'em is the world's most popular poker game. Each player gets <strong class="text-white">2 private hole cards</strong> and shares <strong class="text-white">5 community cards</strong>. Your goal is to make the best 5-card hand from any combination of your 2 cards and the 5 community cards.</p>
+      <div class="mb-4">
+        <div class="text-xs font-semibold uppercase tracking-wider mb-3 text-gray-400">Hand Rankings (best → worst)</div>
+        <div class="space-y-0.5 text-sm">
+          <div class="hand-rank"><span class="text-yellow-400 w-32 shrink-0">Royal Flush</span><span class="text-gray-300">A K Q J T (same suit)</span></div>
+          <div class="hand-rank"><span class="text-yellow-400 w-32 shrink-0">Straight Flush</span><span class="text-gray-300">5 consecutive same suit</span></div>
+          <div class="hand-rank"><span class="text-yellow-400 w-32 shrink-0">Four of a Kind</span><span class="text-gray-300">Four cards of same rank</span></div>
+          <div class="hand-rank"><span class="text-yellow-400 w-32 shrink-0">Full House</span><span class="text-gray-300">Three of a kind + a pair</span></div>
+          <div class="hand-rank"><span class="text-yellow-400 w-32 shrink-0">Flush</span><span class="text-gray-300">5 cards of the same suit</span></div>
+          <div class="hand-rank"><span class="text-yellow-400 w-32 shrink-0">Straight</span><span class="text-gray-300">5 consecutive cards</span></div>
+          <div class="hand-rank"><span class="text-yellow-400 w-32 shrink-0">Three of a Kind</span><span class="text-gray-300">Three cards of same rank</span></div>
+          <div class="hand-rank"><span class="text-yellow-400 w-32 shrink-0">Two Pair</span><span class="text-gray-300">Two different pairs</span></div>
+          <div class="hand-rank"><span class="text-yellow-400 w-32 shrink-0">One Pair</span><span class="text-gray-300">Two cards of same rank</span></div>
+          <div class="hand-rank" style="border:none"><span class="text-yellow-400 w-32 shrink-0">High Card</span><span class="text-gray-300">Highest single card</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="text-xs font-semibold uppercase tracking-wider mb-2 text-gray-400">Table Positions</div>
+        <div class="flex flex-wrap gap-2">
+          <span class="tut-pill" style="background:#1e3a5f;color:#93c5fd">UTG — Under the Gun (first to act preflop)</span>
+          <span class="tut-pill" style="background:#1e3a5f;color:#93c5fd">MP — Middle Position</span>
+          <span class="tut-pill" style="background:#1e3a5f;color:#93c5fd">CO — Cutoff (2nd from right)</span>
+          <span class="tut-pill" style="background:#004d2b;color:#00E676">BTN — Button (Dealer, best position)</span>
+          <span class="tut-pill" style="background:#3d3000;color:#facc15">SB — Small Blind (posts SB, acts 2nd preflop)</span>
+          <span class="tut-pill" style="background:#3d3000;color:#facc15">BB — Big Blind (posts BB, last to act preflop)</span>
+        </div>
       </div>
     </div>
 
-    <!-- Description -->
-    <p id="ch-desc" class="text-sm text-gray-300 leading-relaxed mb-6 p-4 rounded-xl border border-gray-800" style="background:#0a1628"></p>
-
-    <!-- Answer options -->
-    <div id="ch-opts" class="space-y-3 mb-6"></div>
-
-    <!-- Result (hidden until answered) -->
-    <div id="ch-result" class="hidden rounded-2xl border p-5 mb-4">
-      <div id="ch-verdict" class="text-lg font-bold mb-3"></div>
-      <div id="ch-correct-lbl" class="text-sm mb-4"></div>
-      <p id="ch-explain" class="text-sm text-gray-300 leading-relaxed mb-4"></p>
-      <div id="ch-kp-wrap" class="hidden rounded-xl p-4" style="background:#071428;border:1px solid #1e3a5f">
-        <div class="text-xs font-semibold uppercase tracking-wider mb-3 text-gray-500">Key GTO Concepts</div>
-        <ul id="ch-kp" class="space-y-2"></ul>
+    <div class="tut-section">
+      <div class="tut-h" style="color:#38bdf8">2 — The Four Betting Rounds</div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <div class="rounded-xl p-3 text-center" style="background:#071428;border:1px solid #1e3a5f">
+          <div class="font-bold text-sm mb-1" style="color:#00E676">PREFLOP</div>
+          <div class="text-xs text-gray-400">Hole cards dealt. SB + BB posted. UTG acts first.</div>
+          <div class="flex justify-center gap-1 mt-2"><div class="card-back" style="width:28px;height:40px"></div><div class="card-back" style="width:28px;height:40px"></div></div>
+        </div>
+        <div class="rounded-xl p-3 text-center" style="background:#071428;border:1px solid #1e3a5f">
+          <div class="font-bold text-sm mb-1" style="color:#facc15">FLOP</div>
+          <div class="text-xs text-gray-400">3 community cards revealed. SB acts first.</div>
+          <div class="flex justify-center gap-1 mt-2" id="tut-flop-cards"></div>
+        </div>
+        <div class="rounded-xl p-3 text-center" style="background:#071428;border:1px solid #1e3a5f">
+          <div class="font-bold text-sm mb-1" style="color:#fb923c">TURN</div>
+          <div class="text-xs text-gray-400">4th community card. Bets usually increase.</div>
+          <div class="flex justify-center gap-1 mt-2" id="tut-turn-cards"></div>
+        </div>
+        <div class="rounded-xl p-3 text-center" style="background:#071428;border:1px solid #1e3a5f">
+          <div class="font-bold text-sm mb-1" style="color:#f87171">RIVER</div>
+          <div class="text-xs text-gray-400">5th card. Final betting round. Then showdown.</div>
+          <div class="flex justify-center gap-1 mt-2" id="tut-river-cards"></div>
+        </div>
+      </div>
+      <div class="text-xs font-semibold uppercase tracking-wider mb-2 text-gray-400">Your Actions Each Round</div>
+      <div class="flex flex-wrap gap-2">
+        <span class="tut-pill" style="background:#7f1d1d;color:#fca5a5">FOLD — give up your hand, lose any chips already bet</span>
+        <span class="tut-pill" style="background:#1e293b;color:#94a3b8">CHECK — pass the action (only when no bet facing)</span>
+        <span class="tut-pill" style="background:#1e3a8a;color:#93c5fd">CALL — match the current bet to stay in</span>
+        <span class="tut-pill" style="background:#78350f;color:#fde68a">BET / RAISE — put more chips in to increase the price</span>
+        <span class="tut-pill" style="background:#4c1d95;color:#c4b5fd">ALL-IN — commit all remaining chips</span>
       </div>
     </div>
-    <button id="ch-next" onclick="nextChallenge()" class="btn hidden w-full rounded-xl py-2.5 text-sm font-semibold" style="background:#7C3AED;color:#fff">Next Challenge →</button>
+
+    <div class="tut-section">
+      <div class="tut-h" style="color:#a78bfa">3 — What is GTO?</div>
+      <p class="text-sm text-gray-300 leading-relaxed mb-3"><strong class="text-white">Game Theory Optimal (GTO)</strong> means playing in a way that cannot be exploited, even if your opponent knows your strategy perfectly.</p>
+      <p class="text-sm text-gray-300 leading-relaxed mb-4">A GTO player mixes between value bets and bluffs in mathematically precise ratios, making their range <em>balanced</em> and unpredictable. No opponent can gain an edge simply by knowing you play GTO.</p>
+      <div class="rounded-xl p-4 mb-3" style="background:#0d1f35;border:1px solid #4c1d95">
+        <div class="text-xs font-semibold text-purple-300 mb-2">Why does GTO matter for beginners?</div>
+        <p class="text-xs text-gray-400 leading-relaxed">You don't need to play perfect GTO to improve. Understanding GTO concepts teaches you the <em>right reasons</em> to make decisions — equity, pot odds, position advantage. This app uses simplified GTO heuristics to give you coaching feedback after every decision.</p>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <div class="rounded-xl p-3" style="background:#0d1f35;border:1px solid #1e3a5f">
+          <div class="text-xs font-semibold text-green-400 mb-1">✓ GTO says: Bet strong hands for value</div>
+          <div class="text-xs text-gray-400">Build big pots when you have equity advantage</div>
+        </div>
+        <div class="rounded-xl p-3" style="background:#0d1f35;border:1px solid #1e3a5f">
+          <div class="text-xs font-semibold text-green-400 mb-1">✓ GTO says: Fold when equity < pot odds</div>
+          <div class="text-xs text-gray-400">Long-run EV is negative when you call without the right price</div>
+        </div>
+        <div class="rounded-xl p-3" style="background:#0d1f35;border:1px solid #1e3a5f">
+          <div class="text-xs font-semibold text-green-400 mb-1">✓ GTO says: Mix bluffs with value bets</div>
+          <div class="text-xs text-gray-400">Makes your bets unpredictable — opponents can't just fold to every bet</div>
+        </div>
+        <div class="rounded-xl p-3" style="background:#0d1f35;border:1px solid #1e3a5f">
+          <div class="text-xs font-semibold text-green-400 mb-1">✓ GTO says: Defend your BB appropriately</div>
+          <div class="text-xs text-gray-400">Folding too often to steals makes you exploitable</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tut-section">
+      <div class="tut-h" style="color:#facc15">4 — Pot Odds & Equity (The Math)</div>
+      <p class="text-sm text-gray-300 leading-relaxed mb-4">Every call decision comes down to a simple comparison: <strong class="text-white">your equity vs. your pot odds.</strong></p>
+      <div class="rounded-xl p-4 mb-4" style="background:#0d1f35;border:2px solid #ca8a04">
+        <div class="text-sm font-semibold text-yellow-300 mb-2">Pot Odds Formula</div>
+        <div class="font-mono text-base text-white mb-2">Pot Odds = call_amount ÷ (pot + call_amount)</div>
+        <div class="text-xs text-gray-400">Example: Pot = 30, call = 10 → Pot Odds = 10 ÷ 40 = <strong class="text-yellow-300">25%</strong></div>
+        <div class="text-xs text-gray-400 mt-1">If your equity (win probability) is above 25%, calling is profitable long-term.</div>
+      </div>
+      <div class="rounded-xl p-4 mb-4" style="background:#0d1f35;border:2px solid #1e3a5f">
+        <div class="text-sm font-semibold text-blue-300 mb-2">Counting Outs</div>
+        <div class="text-xs text-gray-300 leading-relaxed mb-2">An "out" is a card that would improve your hand. Count your outs then multiply:</div>
+        <div class="text-xs font-mono" style="color:#00E676">Flop equity ≈ outs × 4%&nbsp;&nbsp; | &nbsp;&nbsp;Turn equity ≈ outs × 2%</div>
+        <div class="text-xs text-gray-400 mt-2">Example: Flush draw = 9 outs × 4% = ~36% equity on the flop.</div>
+      </div>
+      <div class="rounded-xl p-4" style="background:#0d1f35;border:2px solid #14532d">
+        <div class="text-sm font-semibold text-green-300 mb-2">Position Advantage</div>
+        <p class="text-xs text-gray-300 leading-relaxed">Acting last in a betting round (BTN, CO) is a massive advantage. You see what everyone does before you decide. <strong class="text-green-300">Position can be worth 10-15% extra equity in practice.</strong> Play tighter OOP (out of position), wider IP (in position).</p>
+      </div>
+    </div>
+
+    <div class="tut-section">
+      <div class="tut-h" style="color:#fb923c">5 — Using This App</div>
+      <div class="space-y-3">
+        <div class="flex gap-3">
+          <span class="text-2xl shrink-0">🎮</span>
+          <div><div class="font-medium text-sm mb-1">Practice Table</div>
+            <div class="text-xs text-gray-400 leading-relaxed">Create a table, sit down, add a bot opponent, and start a hand. After every decision you make, the system shows you real-time coaching: equity, pot odds, recommended action, and GTO reasoning bullets.</div></div>
+        </div>
+        <div class="flex gap-3">
+          <span class="text-2xl shrink-0">🎯</span>
+          <div><div class="font-medium text-sm mb-1">Challenge Sets</div>
+            <div class="text-xs text-gray-400 leading-relaxed">Work through themed quiz sets. Each question puts you in a real hand situation — choose the correct action, see the GTO explanation, then get a score + tendency analysis at the end.</div></div>
+        </div>
+        <div class="flex gap-3">
+          <span class="text-2xl shrink-0">📊</span>
+          <div><div class="font-medium text-sm mb-1">Player Profile</div>
+            <div class="text-xs text-gray-400 leading-relaxed">After playing hands, visit your profile to see stats: VPIP (how often you voluntarily enter pots), PFR (preflop raise %), aggression factor, and more. The system classifies your player type and gives specific coaching suggestions.</div></div>
+        </div>
+        <div class="flex gap-3">
+          <span class="text-2xl shrink-0">🤖</span>
+          <div><div class="font-medium text-sm mb-1">Bot Opponent</div>
+            <div class="text-xs text-gray-400 leading-relaxed">The bot uses equity-based heuristics to make decisions. It's not a professional bot — it's designed as a training partner to put you in real decision spots and trigger the coaching system.</div></div>
+        </div>
+      </div>
+      <div class="mt-5 flex gap-3">
+        <button onclick="navChallenges()" class="flex-1 rounded-xl py-2.5 text-sm font-semibold" style="background:#7C3AED;color:#fff">🎯 Start Challenges</button>
+        <button onclick="goLobby()" class="flex-1 rounded-xl py-2.5 text-sm font-semibold" style="background:#00C853;color:#000">🎮 Play Now</button>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -384,17 +556,18 @@
   <div class="rounded-2xl border border-gray-700 p-6 w-full max-w-sm shadow-2xl" style="background:#0a1628">
     <h3 class="font-semibold mb-4">Take Seat <span id="m-no"></span></h3>
     <input type="hidden" id="m-seat">
-    <div class="mb-4">
-      <label class="block text-xs text-gray-400 mb-1.5">Buy-in (chips)</label>
-      <input id="m-buyin" type="number" min="1" placeholder="500" class="inp">
-    </div>
+    <div class="mb-4"><label class="block text-xs text-gray-400 mb-1.5">Buy-in (chips)</label>
+      <input id="m-buyin" type="number" min="1" placeholder="500" class="inp"></div>
     <div id="m-err" class="hidden mb-3 text-sm text-red-400"></div>
     <div class="flex gap-3">
-      <button onclick="joinSeat()"  class="btn flex-1 rounded-xl py-2 text-sm font-semibold" style="background:#00C853;color:#000">Sit Down</button>
-      <button onclick="closeModal()" class="btn flex-1 rounded-xl py-2 text-sm border border-gray-700 text-gray-300">Cancel</button>
+      <button onclick="joinSeat()"  class="flex-1 rounded-xl py-2 text-sm font-semibold" style="background:#00C853;color:#000">Sit Down</button>
+      <button onclick="closeModal()" class="flex-1 rounded-xl py-2 text-sm border border-gray-700 text-gray-300">Cancel</button>
     </div>
   </div>
 </div>
+
+<!-- Action toast -->
+<div id="action-toast"></div>
 
 <script>
 // ─────────────────────────────────────────────────────────────────────────────
@@ -405,16 +578,17 @@ const app = {
   playerId: localStorage.getItem('playerId'),
   username: localStorage.getItem('username'),
   authTab: 'login', filter: 'all',
-  lobbyTimer: null, feedTimer: null,
+  lobbyTimer: null, feedTimer: null, toastTimer: null,
   // table
   tableId: null, tableName: null, smallBlind: 0, bigBlind: 0,
   tableStatus: 'WAITING', tableSeats: [],
-  handId: null, street: null, potChips: 0,
+  handId: null, street: null, potChips: 0, currentBet: 0,
   nextActionSeat: -1, dealerSeat: -1, sbSeat: -1, bbSeat: -1,
   myHoleCards: [], mySeatNo: -1, liveSeats: [], boardCards: [],
+  actionLog: [],
   stompClient: null, stompSub: null,
-  // challenges
-  challengeList: [], currentChallengeId: null, currentChallengeIndex: 0,
+  // challenges / sets
+  currentSetId: null, currentSetChallenges: [], currentSetIndex: 0, setResults: [],
 };
 
 const id = s => document.getElementById(s);
@@ -422,19 +596,21 @@ const id = s => document.getElementById(s);
 // ─────────────────────────────────────────────────────────────────────────────
 // ROUTING
 // ─────────────────────────────────────────────────────────────────────────────
-const VIEWS = ['auth','lobby','table','profile','challenges','challenge'];
+const VIEWS = ['auth','lobby','table','profile','challenges','challenge-set','tutorial'];
 function showView(name) {
   VIEWS.forEach(v => id('view-'+v)?.classList.add('hidden'));
-  id('view-'+name)?.classList.remove('hidden');
+  const el = id('view-'+name);
+  if (el) { el.classList.remove('hidden'); el.classList.add('view-fade'); }
 }
 function navigate() {
   if (!app.token) { showView('auth'); return; }
   const h = location.hash || '#lobby';
-  if      (h.startsWith('#table/'))     loadTable(h.slice(7));
-  else if (h.startsWith('#profile/'))   loadProfile(h.slice(9));
-  else if (h.startsWith('#challenge/')) loadChallenge(h.slice(11));
-  else if (h === '#challenges')         loadChallenges();
-  else                                   loadLobby();
+  if      (h.startsWith('#table/'))         loadTable(h.slice(7));
+  else if (h.startsWith('#profile/'))       loadProfile(h.slice(9));
+  else if (h.startsWith('#challenge-set/')) loadChallengeSet(h.slice(15));
+  else if (h === '#challenges')             loadChallenges();
+  else if (h === '#tutorial')               loadTutorial();
+  else                                       loadLobby();
 }
 window.addEventListener('hashchange', navigate);
 window.addEventListener('DOMContentLoaded', () => {
@@ -449,7 +625,7 @@ async function api(method, path, body) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (app.token) opts.headers['Authorization'] = 'Bearer ' + app.token;
   if (body !== undefined) opts.body = JSON.stringify(body);
-  const res  = await fetch(path, opts);
+  const res = await fetch(path, opts);
   const text = await res.text();
   const data = text ? JSON.parse(text) : {};
   if (!res.ok) throw { status: res.status, data };
@@ -461,8 +637,8 @@ async function api(method, path, body) {
 // ─────────────────────────────────────────────────────────────────────────────
 function switchTab(t) {
   app.authTab = t;
-  id('tab-login').className    = 'flex-1 pb-3 text-sm font-medium ' + (t==='login'    ? 'tab-on' : 'tab-off');
-  id('tab-register').className = 'flex-1 pb-3 text-sm font-medium ' + (t==='register' ? 'tab-on' : 'tab-off');
+  id('tab-login').className    = 'flex-1 pb-3 text-sm font-medium ' + (t==='login'    ? 'tab-on':'tab-off');
+  id('tab-register').className = 'flex-1 pb-3 text-sm font-medium ' + (t==='register' ? 'tab-on':'tab-off');
   id('auth-btn').textContent   = t === 'login' ? 'Login' : 'Register';
   id('auth-err').classList.add('hidden');
 }
@@ -495,13 +671,13 @@ function loadLobby() {
 }
 function goLobby() { disconnectStomp(); clearTimeout(app.feedTimer); clearInterval(app.lobbyTimer); location.hash = '#lobby'; }
 async function fetchTables() {
-  try { const q = app.filter !== 'all' ? '?status=' + app.filter : ''; renderTables(await api('GET', '/tables' + q)); } catch {}
+  try { const q = app.filter !== 'all' ? '?status='+app.filter : ''; renderTables(await api('GET','/tables'+q)); } catch {}
 }
 function setFilter(f) {
   app.filter = f;
   ['all','WAITING','IN_HAND'].forEach(k => {
     const b = id('f-'+k); if (!b) return;
-    b.className = 'btn text-xs rounded-full px-3 py-1.5 ' + (k === f ? 'pill-on' : 'pill-off');
+    b.className = 'text-xs rounded-full px-3 py-1.5 ' + (k===f ? 'pill-on':'pill-off');
   });
   fetchTables();
 }
@@ -511,62 +687,84 @@ function renderTables(tables) {
   if (!tables.length) { none.classList.remove('hidden'); return; }
   none.classList.add('hidden');
   tables.forEach(t => {
-    const sc = t.status === 'WAITING' ? 'color:#00E676;background:#003d1a' : t.status === 'IN_HAND' ? 'color:#facc15;background:#3d3000' : 'color:#6b7280';
+    const sc = t.status==='WAITING' ? 'color:#00E676;background:#003d1a' : t.status==='IN_HAND' ? 'color:#facc15;background:#3d3000' : 'color:#6b7280';
     const d = document.createElement('div');
-    d.className = 'table-card rounded-2xl border border-gray-800 p-4 cursor-pointer select-none';
+    d.className = 'hover-lift rounded-2xl border border-gray-800 p-4 cursor-pointer select-none';
     d.style.background = '#0a1628';
     d.innerHTML = `<div class="flex items-start justify-between mb-2">
       <span class="font-semibold text-sm">${esc(t.name)}</span>
-      <span class="text-xs px-2 py-0.5 rounded-full" style="${sc}">${t.status}</span>
-    </div>
-    <div class="text-xs text-gray-500">${t.smallBlind}/${t.bigBlind} blinds &nbsp;·&nbsp; ${t.seatCount}/6 seated</div>`;
-    d.onclick = () => { location.hash = '#table/' + t.id; };
+      <span class="text-xs px-2 py-0.5 rounded-full" style="${sc}">${t.status}</span></div>
+      <div class="text-xs text-gray-500">${t.smallBlind}/${t.bigBlind} blinds · ${t.seatCount}/6 seated</div>`;
+    d.onclick = () => { location.hash = '#table/'+t.id; };
     grid.appendChild(d);
   });
 }
-function toggleCreate() {
-  id('create-form').classList.toggle('hidden');
-  id('c-err').classList.add('hidden');
-}
+function toggleCreate() { id('create-form').classList.toggle('hidden'); id('c-err').classList.add('hidden'); }
 async function createTable() {
-  const name = id('c-name').value.trim(), sb = +id('c-sb').value, bb = +id('c-bb').value;
-  const err = id('c-err');
-  if (!name || !sb || !bb) { err.textContent = 'Fill in all fields'; err.classList.remove('hidden'); return; }
-  if (bb !== 2 * sb) { err.textContent = 'Big blind must be 2× small blind'; err.classList.remove('hidden'); return; }
-  try {
-    const t = await api('POST', '/tables', { name, smallBlind: sb, bigBlind: bb });
-    toggleCreate(); location.hash = '#table/' + t.id;
-  } catch (e) { err.textContent = e.data?.message || 'Failed'; err.classList.remove('hidden'); }
+  const name = id('c-name').value.trim(), sb = +id('c-sb').value, bb = +id('c-bb').value, err = id('c-err');
+  if (!name || !sb || !bb) { err.textContent='Fill in all fields'; err.classList.remove('hidden'); return; }
+  if (bb !== 2*sb) { err.textContent='Big blind must be 2× small blind'; err.classList.remove('hidden'); return; }
+  try { const t = await api('POST','/tables',{ name, smallBlind:sb, bigBlind:bb }); toggleCreate(); location.hash='#table/'+t.id; }
+  catch (e) { err.textContent = e.data?.message||'Failed'; err.classList.remove('hidden'); }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TABLE
 // ─────────────────────────────────────────────────────────────────────────────
 async function loadTable(tid) {
-  showView('table'); clearInterval(app.lobbyTimer); disconnectStomp();
-  Object.assign(app, { tableId: tid, handId: null, myHoleCards: [], boardCards: [], mySeatNo: -1, liveSeats: [], nextActionSeat: -1 });
-  ['action-panel','fb-panel'].forEach(x => id(x).classList.add('hidden'));
-  id('my-cards').innerHTML = ''; id('board').innerHTML = '';
-  id('t-pot').textContent = ''; id('t-street').textContent = '';
+  showView('table'); clearInterval(app.lobbyTimer);
+
+  // FIX: Connect STOMP first to avoid missing events during REST fetch
+  disconnectStomp();
+  connectStomp(tid);
+
+  // FIX: Reset ALL hand state including blind badges
+  Object.assign(app, {
+    tableId:tid, handId:null, myHoleCards:[], boardCards:[], liveSeats:[],
+    nextActionSeat:-1, dealerSeat:-1, sbSeat:-1, bbSeat:-1, currentBet:0, actionLog:[],
+    tableSeats:[], tableName:'', mySeatNo:-1,
+  });
+  ['action-panel'].forEach(x => id(x).classList.add('hidden'));
+  closeFb();
+  id('my-cards').innerHTML=''; id('board').innerHTML='';
+  id('t-pot').textContent=''; id('t-street').textContent='';
+  id('action-log-list').innerHTML='<div class="text-xs text-gray-600 italic">No actions yet.</div>';
+
   try {
-    const d = await api('GET', '/tables/' + tid);
-    Object.assign(app, { tableName: d.name, smallBlind: d.smallBlind, bigBlind: d.bigBlind, tableStatus: d.status, tableSeats: d.seats });
+    const d = await api('GET','/tables/'+tid);
+    Object.assign(app, { tableName:d.name, smallBlind:d.smallBlind, bigBlind:d.bigBlind, tableStatus:d.status, tableSeats:d.seats });
     id('t-title').textContent = `${d.name}  (${d.smallBlind}/${d.bigBlind})`;
     const mine = d.seats.find(s => s.playerId === app.playerId);
     app.mySeatNo = mine ? mine.seatNo : -1;
-    renderSeats(d.seats, null, -1); updateCtrlBtns(); connectStomp(tid);
+
+    // FIX: Try to restore active hand state on reconnect
+    try {
+      const h = await api('GET','/tables/'+tid+'/hand');
+      Object.assign(app, {
+        handId:h.handId, street:h.street, potChips:h.potChips, boardCards:h.boardCards||[],
+        dealerSeat:h.dealerSeat, sbSeat:h.sbSeat, bbSeat:h.bbSeat,
+        myHoleCards:h.myHoleCards||[], tableStatus:'IN_HAND',
+      });
+      renderMyCards(); renderBoard(app.boardCards, h.street);
+      id('t-pot').textContent = '💰 '+h.potChips;
+      id('t-street').textContent = h.street||'';
+      renderSeats(app.tableSeats, h.seats, -1);
+    } catch { /* 422 = no active hand, that's fine */ }
+
+    renderSeats(app.tableSeats, app.liveSeats, app.nextActionSeat);
+    updateCtrlBtns();
   } catch (e) { console.error('load table', e); }
 }
+
 function updateCtrlBtns() {
   const seated = (app.tableSeats||[]).filter(s => s.playerId).length;
-  const canStart = app.tableStatus === 'WAITING' && seated >= 2 && app.mySeatNo > 0 && !app.handId;
-  const emptySeats = 6 - seated;
-  const canBot = app.mySeatNo > 0 && app.tableStatus === 'WAITING' && emptySeats > 0;
+  const canStart = app.tableStatus==='WAITING' && seated>=2 && app.mySeatNo>0 && !app.handId;
+  const canBot = app.mySeatNo>0 && app.tableStatus==='WAITING' && (6-seated)>0;
   id('start-btn').classList.toggle('hidden', !canStart);
   id('bot-btn').classList.toggle('hidden', !canBot);
 }
 
-// ── SEAT RENDERING ─────────────────────────────────────────────────────────
+// ── SEAT RENDERING ───────────────────────────────────────────────────────────
 function renderSeats(seats, live, acting) {
   const sm = Object.fromEntries((seats||[]).map(s => [s.seatNo, s]));
   const lm = Object.fromEntries((live||[]).map(s => [s.seatNo, s]));
@@ -575,65 +773,67 @@ function renderSeats(seats, live, acting) {
     const inner = wrap.querySelector('.seat-w');
     const seat = sm[n];
     if (!seat || !seat.playerId) {
-      inner.innerHTML = app.mySeatNo < 1 && app.token
-        ? `<button onclick="openModal(${n})" class="btn w-full text-xs rounded-xl px-2 py-2.5 transition-colors"
-             style="border:1px dashed #374151;color:#4b5563" onmouseover="this.style.borderColor='#00C853';this.style.color='#00E676'" onmouseout="this.style.borderColor='#374151';this.style.color='#4b5563'">+ Seat ${n}</button>`
+      inner.innerHTML = app.mySeatNo<1 && app.token
+        ? `<button onclick="openModal(${n})" class="w-full text-xs rounded-xl px-2 py-2.5 transition-colors" style="border:1px dashed #374151;color:#4b5563" onmouseover="this.style.borderColor='#00C853';this.style.color='#00E676'" onmouseout="this.style.borderColor='#374151';this.style.color='#4b5563'">+ Seat ${n}</button>`
         : `<div class="text-xs text-center rounded-xl px-2 py-2.5" style="border:1px dashed #1e293b;color:#374151">Seat ${n}</div>`;
       continue;
     }
-    const l = lm[n], isMe = seat.playerId === app.playerId;
-    const isAct = acting === n, folded = l?.folded ?? false, allIn = l?.allIn ?? false;
-    const stack = l?.stackChips ?? seat.stackChips;
+    const l = lm[n], isMe = seat.playerId===app.playerId, isAct = acting===n;
+    const folded = l?.folded??false, allIn = l?.allIn??false, stack = l?.stackChips??seat.stackChips;
     const cards = isMe ? app.myHoleCards : (l ? ['**','**'] : null);
-    const blindTag = n === app.dealerSeat ? '<span class="rounded px-1" style="background:#374151;font-size:10px">D</span>'
-                   : n === app.sbSeat     ? '<span class="rounded px-1" style="background:#78350f;color:#fde68a;font-size:10px">SB</span>'
-                   : n === app.bbSeat     ? '<span class="rounded px-1" style="background:#1e3a8a;color:#93c5fd;font-size:10px">BB</span>' : '';
-    const border = isAct ? 'border-color:#00E676' : isMe ? 'border-color:#3b82f6' : folded ? 'border-color:#1e293b;opacity:0.4' : 'border-color:#1e293b';
-    const glow   = isAct ? 'seat-acting' : '';
-    inner.innerHTML = `<div class="${glow} rounded-xl px-2 py-2 text-center border" style="background:#07101F;${border}">
+    const blindTag = n===app.dealerSeat ? '<span class="rounded px-1" style="background:#374151;font-size:9px">D</span>'
+                   : n===app.sbSeat     ? '<span class="rounded px-1" style="background:#78350f;color:#fde68a;font-size:9px">SB</span>'
+                   : n===app.bbSeat     ? '<span class="rounded px-1" style="background:#1e3a8a;color:#93c5fd;font-size:9px">BB</span>' : '';
+    const border = isAct  ? 'border-color:#00E676' : isMe ? 'border-color:#3b82f6' : folded ? 'border-color:#1e293b;opacity:0.4' : 'border-color:#1e293b';
+    const anim   = isAct  ? 'seat-acting' : '';
+    inner.innerHTML = `<div class="${anim} rounded-xl px-2 py-2 text-center border" style="background:#07101F;${border}">
       <div class="flex justify-center gap-1 mb-0.5" style="font-size:10px">
-        ${blindTag}
-        ${isAct  ? '<span style="color:#00E676">▶</span>'   : ''}
-        ${folded ? '<span style="color:#ef4444">F</span>'   : ''}
-        ${allIn  ? '<span style="color:#a78bfa">A</span>'  : ''}
+        ${blindTag}${isAct?'<span style="color:#00E676">▶</span>':''}${folded?'<span style="color:#ef4444">F</span>':''}${allIn?'<span style="color:#a78bfa">A</span>':''}
       </div>
       <div class="text-xs font-semibold truncate mb-0.5" style="color:${isMe?'#60a5fa':'#e2e8f0'}">${esc(seat.username)}</div>
-      <div class="text-xs mb-1" style="color:#FFD700">${stack} ♟</div>
+      <div class="text-xs mb-1" style="color:#FFD700">${stack}♟</div>
       <div class="flex gap-0.5 justify-center">${(cards||[]).map(cardHtml).join('')}</div>
     </div>`;
   }
 }
+
 function cardHtml(code) {
-  if (!code || code === '**') return '<div class="card-back"></div>';
+  if (!code || code==='**') return '<div class="card-back"></div>';
   const rank = code.slice(0,-1), suit = code.slice(-1);
   const sym = {h:'♥',d:'♦',s:'♠',c:'♣'}[suit]||suit;
-  return `<div class="card ${suit==='h'||suit==='d'?'red':'black'}"><span>${rank}${sym}</span><span>${sym}</span></div>`;
+  const cls = (suit==='h'||suit==='d') ? 'red' : 'black';
+  return `<div class="card ${cls}"><div class="card-corner tl">${rank}<br>${sym}</div><div class="card-center">${sym}</div><div class="card-corner br">${rank}<br>${sym}</div></div>`;
 }
+
 function renderBoard(cards, street) {
   const total = {PREFLOP:0,FLOP:3,TURN:4,RIVER:5,SHOWDOWN:5}[street]??0;
   let html = '';
-  for (let i = 0; i < 5; i++) html += i < total ? (cards?.[i] ? cardHtml(cards[i]) : '<div class="card-back"></div>') : '<div class="card-placeholder"></div>';
+  for (let i = 0; i < 5; i++) html += i<total ? (cards?.[i] ? cardHtml(cards[i]) : '<div class="card-back"></div>') : '<div class="card-placeholder"></div>';
   id('board').innerHTML = html;
 }
+
 function renderMyCards() {
   const el = id('my-cards');
-  if (!app.myHoleCards?.length) { el.innerHTML = '<span style="color:#374151;font-size:.75rem">—</span>'; return; }
-  el.innerHTML = app.myHoleCards.map(cardHtml).join('');
+  if (!app.myHoleCards?.length) { el.innerHTML='<span style="color:#374151;font-size:.75rem">—</span>'; return; }
+  el.innerHTML = app.myHoleCards.map((c,i) => {
+    const html = cardHtml(c);
+    return `<div class="card-deal" style="animation-delay:${i*80}ms">${html.replace('<div class','<div').replace('</div>','')}</div>`;
+  }).join('');
 }
 
-// ── STOMP ──────────────────────────────────────────────────────────────────
+// ── STOMP ────────────────────────────────────────────────────────────────────
 function connectStomp(tid) {
-  const conn = id('t-conn'); conn.textContent = 'Connecting…'; conn.style.color = '#eab308';
+  const conn = id('t-conn'); conn.textContent='Connecting…'; conn.style.color='#eab308';
   app.stompClient = new StompJs.Client({
-    webSocketFactory: () => new SockJS('/ws'), reconnectDelay: 5000,
+    webSocketFactory: () => new SockJS('/ws'), reconnectDelay:5000,
     onConnect: () => {
-      conn.textContent = '● Live'; conn.style.color = '#00E676';
-      app.stompSub = app.stompClient.subscribe('/topic/tables/' + tid, msg => {
+      conn.textContent='● Live'; conn.style.color='#00E676';
+      app.stompSub = app.stompClient.subscribe('/topic/tables/'+tid, msg => {
         try { handleEvent(JSON.parse(msg.body)); } catch {}
       });
     },
-    onDisconnect: () => { conn.textContent = '○ Off'; conn.style.color = '#4b5563'; },
-    onWebSocketError: () => { conn.textContent = '✕ Error'; conn.style.color = '#ef4444'; },
+    onDisconnect: () => { conn.textContent='○ Off'; conn.style.color='#4b5563'; },
+    onWebSocketError: () => { conn.textContent='✕ Error'; conn.style.color='#ef4444'; },
   });
   app.stompClient.activate();
 }
@@ -641,70 +841,134 @@ function disconnectStomp() {
   app.stompSub?.unsubscribe(); app.stompSub = null;
   app.stompClient?.deactivate(); app.stompClient = null;
 }
+
 function handleEvent(ev) {
-  app.handId = ev.handId; app.street = ev.street; app.potChips = ev.potChips; app.nextActionSeat = ev.nextActionSeat;
-  app.liveSeats = ev.seats || [];
-  id('t-pot').textContent    = ev.potChips ? '💰 ' + ev.potChips : '';
-  id('t-street').textContent = ev.street || '';
+  app.handId = ev.handId; app.street = ev.street; app.potChips = ev.potChips;
+  app.nextActionSeat = ev.nextActionSeat; app.liveSeats = ev.seats||[];
+
+  // FIX: Update board and currentBet from STOMP (the core flop-visibility bug fix)
+  if (ev.boardCards !== undefined) app.boardCards = ev.boardCards;
+  if (ev.currentBet !== undefined) app.currentBet = ev.currentBet;
+
+  id('t-pot').textContent    = ev.potChips ? '💰 '+ev.potChips : '';
+  id('t-street').textContent = ev.street||'';
   renderSeats(app.tableSeats, ev.seats, ev.nextActionSeat);
   renderBoard(app.boardCards, ev.street);
   showActionPanel(ev.nextActionSeat);
+
+  // FIX: Handle hand over via STOMP (remove fragile setTimeout)
+  if (ev.nextActionSeat === -1 && ev.handId) {
+    app.handId = null; app.myHoleCards = [];
+    renderMyCards(); renderBoard([],'');
+    app.tableStatus = 'WAITING';
+    setTimeout(updateCtrlBtns, 200);
+  }
+
+  // Action log — update from lastAction field
+  if (ev.lastAction) {
+    addActionLog(ev.lastAction, ev.lastActionSeat);
+  }
+
   updateCtrlBtns();
 }
+
+// FIX: Show/hide CHECK vs CALL based on currentBet
 function showActionPanel(next) {
   const myTurn = app.mySeatNo > 0 && next === app.mySeatNo;
   id('action-panel').classList.toggle('hidden', !myTurn);
   if (myTurn) {
     id('act-err').classList.add('hidden');
-    id('bet-amt').value = Math.max(app.bigBlind * 2, Math.round(app.potChips * 0.6));
+    id('bet-amt').value = Math.max(app.bigBlind*2, Math.round(app.potChips*0.6));
+    const hasBet = (app.currentBet ?? 0) > 0;
+    id('btn-check').classList.toggle('hidden', hasBet);
+    id('btn-call').classList.toggle('hidden', !hasBet);
   }
 }
 
-// ── START / BOT / ACTIONS ──────────────────────────────────────────────────
+// ── ACTION LOG ───────────────────────────────────────────────────────────────
+function addActionLog(text, seatNo) {
+  app.actionLog.unshift({ text, seatNo, ts: Date.now() });
+  if (app.actionLog.length > 8) app.actionLog.pop();
+  renderActionLog();
+  // Show opponent action toast (not for own actions)
+  if (seatNo !== app.mySeatNo && seatNo > 0) showActionToast(text);
+}
+
+function renderActionLog() {
+  const el = id('action-log-list');
+  if (!app.actionLog.length) { el.innerHTML='<div class="text-xs text-gray-600 italic">No actions yet.</div>'; return; }
+  el.innerHTML = app.actionLog.map(a => {
+    const isMe = a.seatNo === app.mySeatNo;
+    return `<div class="text-xs flex items-center gap-1.5" style="color:${isMe?'#00E676':'#94a3b8'}">
+      <span style="color:${isMe?'#00C853':'#374151'}">●</span>${esc(a.text)}</div>`;
+  }).join('');
+}
+
+function showActionToast(text) {
+  clearTimeout(app.toastTimer);
+  const el = id('action-toast');
+  el.textContent = text; el.classList.add('toast-show');
+  app.toastTimer = setTimeout(() => el.classList.remove('toast-show'), 2500);
+}
+
+// ── START / BOT / ACTIONS ────────────────────────────────────────────────────
 async function startHand() {
   try {
-    const h = await api('POST', '/tables/' + app.tableId + '/hands');
-    Object.assign(app, { handId: h.handId, street: h.street, potChips: h.potChips,
-      dealerSeat: h.dealerSeat, sbSeat: h.sbSeat, bbSeat: h.bbSeat,
-      myHoleCards: h.myHoleCards || [], boardCards: h.boardCards || [], tableStatus: 'IN_HAND' });
+    const h = await api('POST','/tables/'+app.tableId+'/hands');
+    Object.assign(app, {
+      handId:h.handId, street:h.street, potChips:h.potChips,
+      dealerSeat:h.dealerSeat, sbSeat:h.sbSeat, bbSeat:h.bbSeat,
+      myHoleCards:h.myHoleCards||[], boardCards:h.boardCards||[], tableStatus:'IN_HAND',
+      currentBet:app.bigBlind, // preflop: everyone must match BB
+    });
     renderMyCards(); renderBoard(app.boardCards, h.street);
-    id('t-pot').textContent    = '💰 ' + h.potChips;
-    id('t-street').textContent = h.street || '';
-    renderSeats(app.tableSeats, h.seats, -1); updateCtrlBtns();
-  } catch (e) { alert(e.data?.message || 'Cannot start hand'); }
+    id('t-pot').textContent    = '💰 '+h.potChips;
+    id('t-street').textContent = h.street||'';
+    renderSeats(app.tableSeats, h.seats, -1);
+    addActionLog('Hand started — PREFLOP', -1);
+    updateCtrlBtns();
+  } catch (e) { alert(e.data?.message||'Cannot start hand'); }
 }
 
 async function addBot() {
-  const emptySeats = [1,2,3,4,5,6].filter(n => !(app.tableSeats||[]).find(s => s.seatNo === n && s.playerId));
+  const emptySeats = [1,2,3,4,5,6].filter(n => !(app.tableSeats||[]).find(s => s.seatNo===n && s.playerId));
   if (!emptySeats.length) { alert('No empty seats'); return; }
   try {
-    await api('POST', '/tables/' + app.tableId + '/bots', { seatNo: emptySeats[0], buyIn: 500 });
-    const d = await api('GET', '/tables/' + app.tableId);
-    app.tableSeats = d.seats; app.tableStatus = d.status;
+    await api('POST','/tables/'+app.tableId+'/bots', { seatNo:emptySeats[0], buyIn:500 });
+    const d = await api('GET','/tables/'+app.tableId);
+    app.tableSeats=d.seats; app.tableStatus=d.status;
     renderSeats(app.tableSeats, app.liveSeats, app.nextActionSeat); updateCtrlBtns();
-  } catch (e) { alert(e.data?.message || 'Could not add bot'); }
+  } catch (e) { alert(e.data?.message||'Could not add bot'); }
 }
 
 async function act(type, amount) {
   const err = id('act-err'); err.classList.add('hidden');
   try {
-    const r = await api('POST', '/hands/' + app.handId + '/actions', { actionType: type, amount });
-    app.street = r.street; app.potChips = r.potChips; app.nextActionSeat = r.nextSeat;
-    app.liveSeats = r.seats || []; app.boardCards = r.boardCards || app.boardCards;
-    id('t-pot').textContent    = r.potChips ? '💰 ' + r.potChips : '';
-    id('t-street').textContent = r.street || '';
+    const r = await api('POST','/hands/'+app.handId+'/actions', { actionType:type, amount });
+    app.street=r.street; app.potChips=r.potChips; app.nextActionSeat=r.nextSeat;
+    app.liveSeats=r.seats||[]; app.boardCards=r.boardCards||app.boardCards;
+    app.currentBet=r.nextSeat<1 ? 0 : app.currentBet; // reset if hand over
+
+    id('t-pot').textContent    = r.potChips ? '💰 '+r.potChips : '';
+    id('t-street').textContent = r.street||'';
     renderSeats(app.tableSeats, r.seats, r.nextSeat); renderBoard(app.boardCards, r.street);
     showActionPanel(r.nextSeat);
-    if (r.nextSeat === -1) { app.handId = null; app.myHoleCards = []; renderMyCards(); renderBoard([], ''); setTimeout(() => { app.tableStatus = 'WAITING'; updateCtrlBtns(); }, 1500); }
+
+    // FIX: Let STOMP handle hand-end; just clear local visual state
+    if (r.nextSeat === -1) {
+      app.handId=null; app.myHoleCards=[];
+      renderMyCards(); renderBoard([],'');
+      addActionLog('Hand over', -1);
+    }
     if (r.feedback) showFeedback(r.feedback);
-  } catch (e) { err.textContent = e.data?.message || 'Action failed'; err.classList.remove('hidden'); }
+  } catch (e) { err.textContent=e.data?.message||'Action failed'; err.classList.remove('hidden'); }
 }
 function myStack() {
   const s = app.liveSeats.length ? app.liveSeats.find(s=>s.seatNo===app.mySeatNo) : app.tableSeats.find(s=>s.seatNo===app.mySeatNo);
   return s?.stackChips ?? 0;
 }
 
-// ── FEEDBACK ───────────────────────────────────────────────────────────────
+// ── FEEDBACK ─────────────────────────────────────────────────────────────────
 const Q = {
   OPTIMAL:    { bg:'#052e16', border:'#00C853', text:'#00E676', lbl:'✓ OPTIMAL' },
   ACCEPTABLE: { bg:'#1c1200', border:'#ca8a04', text:'#facc15', lbl:'~ ACCEPTABLE' },
@@ -713,48 +977,44 @@ const Q = {
 };
 function showFeedback(fb) {
   clearTimeout(app.feedTimer);
-  const q = Q[fb.quality] || Q.SUBOPTIMAL;
-  id('fb-inner').style.borderColor = q.border;
-  id('fb-inner').style.background  = q.bg;
-  const badge = id('fb-badge');
-  badge.textContent = q.lbl; badge.style.background = q.border + '33'; badge.style.color = q.text;
-  id('fb-arrow').textContent = fb.actionTaken !== fb.recommendedAction
+  const q = Q[fb.quality]||Q.SUBOPTIMAL;
+  id('fb-inner').style.borderColor=q.border; id('fb-inner').style.background=q.bg;
+  const badge = id('fb-badge'); badge.textContent=q.lbl; badge.style.background=q.border+'33'; badge.style.color=q.text;
+  id('fb-arrow').textContent = fb.actionTaken!==fb.recommendedAction
     ? `${fb.actionTaken} → recommended: ${fb.recommendedAction}` : `You played: ${fb.actionTaken}`;
-  id('fb-exp').textContent = fb.explanation || '';
-  const eqPct = Math.round((fb.equity||0)*100), poPct = Math.round((fb.potOdds||0)*100);
-  id('fb-eq-lbl').textContent = eqPct + '%';
-  const bar = id('fb-eq-bar');
-  bar.style.width = eqPct + '%';
-  bar.style.background = eqPct > 50 ? '#00C853' : eqPct > poPct ? '#ca8a04' : '#dc2626';
-  id('fb-po-lbl').textContent = 'Pot odds: ' + poPct + '%';
-  const edge = id('fb-edge');
-  edge.textContent = eqPct > poPct ? '✓ You have the edge' : '✗ Not getting the right price';
-  edge.style.color = eqPct > poPct ? '#00E676' : '#f87171';
-  const gto = id('fb-gto'), pts = id('fb-pts');
+  id('fb-exp').textContent = fb.explanation||'';
+  const eqPct=Math.round((fb.equity||0)*100), poPct=Math.round((fb.potOdds||0)*100);
+  id('fb-eq-lbl').textContent=eqPct+'%';
+  const bar=id('fb-eq-bar'); bar.style.width=eqPct+'%';
+  bar.style.background=eqPct>50?'#00C853':eqPct>poPct?'#ca8a04':'#dc2626';
+  id('fb-po-lbl').textContent='Pot odds: '+poPct+'%';
+  const edge=id('fb-edge'); edge.textContent=eqPct>poPct?'✓ You have the edge':'✗ Not getting the right price';
+  edge.style.color=eqPct>poPct?'#00E676':'#f87171';
+  const gto=id('fb-gto'), pts=id('fb-pts');
   if (fb.gtoPoints?.length) {
     gto.classList.remove('hidden');
-    pts.innerHTML = fb.gtoPoints.map(p => `<li class="flex gap-2 text-sm" style="color:#94a3b8;line-height:1.5"><span style="color:#00C853;margin-top:2px;flex-shrink:0">•</span><span>${esc(p)}</span></li>`).join('');
+    pts.innerHTML = fb.gtoPoints.map(p=>`<li class="flex gap-2 text-sm" style="color:#94a3b8;line-height:1.5"><span style="color:#00C853;shrink:0">•</span><span>${esc(p)}</span></li>`).join('');
   } else gto.classList.add('hidden');
-  id('fb-panel').classList.remove('hidden');
+  const panel=id('fb-panel'); panel.classList.remove('fb-hidden'); panel.classList.add('fb-shown');
   app.feedTimer = setTimeout(closeFb, 14000);
 }
-function closeFb() { id('fb-panel').classList.add('hidden'); clearTimeout(app.feedTimer); }
-
-// ── JOIN MODAL ─────────────────────────────────────────────────────────────
-function openModal(n) {
-  id('m-no').textContent = n; id('m-seat').value = n; id('m-buyin').value = 500;
-  id('m-err').classList.add('hidden'); id('join-modal').classList.remove('hidden');
+function closeFb() {
+  const panel=id('fb-panel'); panel.classList.remove('fb-shown'); panel.classList.add('fb-hidden');
+  clearTimeout(app.feedTimer);
 }
+
+// ── JOIN MODAL ────────────────────────────────────────────────────────────────
+function openModal(n) { id('m-no').textContent=n; id('m-seat').value=n; id('m-buyin').value=500; id('m-err').classList.add('hidden'); id('join-modal').classList.remove('hidden'); }
 function closeModal() { id('join-modal').classList.add('hidden'); }
 async function joinSeat() {
-  const seatNo = +id('m-seat').value, buyIn = +id('m-buyin').value;
+  const seatNo=+id('m-seat').value, buyIn=+id('m-buyin').value;
   try {
-    await api('POST', '/tables/' + app.tableId + '/seats', { playerId: app.playerId, seatNo, buyIn });
-    app.mySeatNo = seatNo;
-    const d = await api('GET', '/tables/' + app.tableId);
-    app.tableSeats = d.seats; app.tableStatus = d.status;
+    await api('POST','/tables/'+app.tableId+'/seats',{ playerId:app.playerId, seatNo, buyIn });
+    app.mySeatNo=seatNo;
+    const d = await api('GET','/tables/'+app.tableId);
+    app.tableSeats=d.seats; app.tableStatus=d.status;
     renderSeats(app.tableSeats, app.liveSeats, app.nextActionSeat); updateCtrlBtns(); closeModal();
-  } catch (e) { const err = id('m-err'); err.textContent = e.data?.message||'Failed'; err.classList.remove('hidden'); }
+  } catch (e) { const err=id('m-err'); err.textContent=e.data?.message||'Failed'; err.classList.remove('hidden'); }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -763,139 +1023,221 @@ async function joinSeat() {
 async function loadProfile(pid) {
   showView('profile'); clearInterval(app.lobbyTimer);
   try {
-    const p = await api('GET', '/players/' + pid + '/profile');
-    id('p-name').textContent = p.username; id('p-type').textContent = p.playerType;
-    id('p-desc').textContent = TYPE_DESCS[p.playerType] || '';
-    const s = p.stats;
-    id('st-hands').textContent = s.handsPlayed; id('st-vpip').textContent = pct(s.vpip); id('st-pfr').textContent = pct(s.pfr);
-    id('st-3b').textContent = pct(s.threeBetPct); id('st-af').textContent = s.aggressionFactor.toFixed(2);
-    id('st-wtsd').textContent = pct(s.wtsdPct); id('st-wsd').textContent = pct(s.wonAtSdPct);
-    const pr = s.avgProfitPerHand; id('st-prof').textContent = (pr>=0?'+':'') + pr.toFixed(1);
-    id('st-prof').style.color = pr >= 0 ? '#00E676' : '#f87171';
-    cStat('st-vpip', s.vpip,  .15, .35); cStat('st-pfr', s.pfr, .10, .25);
-    cStat('st-wtsd', s.wtsdPct, .20, .40); cStat('st-wsd', s.wonAtSdPct, .45, 1, false);
-    const list = id('sug-list'), none = id('no-sug'); list.innerHTML = '';
+    const p = await api('GET','/players/'+pid+'/profile');
+    id('p-name').textContent=p.username; id('p-type').textContent=p.playerType;
+    id('p-desc').textContent=TYPE_DESCS[p.playerType]||'';
+    const s=p.stats;
+    id('st-hands').textContent=s.handsPlayed; id('st-vpip').textContent=pct(s.vpip); id('st-pfr').textContent=pct(s.pfr);
+    id('st-3b').textContent=pct(s.threeBetPct); id('st-af').textContent=s.aggressionFactor.toFixed(2);
+    id('st-wtsd').textContent=pct(s.wtsdPct); id('st-wsd').textContent=pct(s.wonAtSdPct);
+    const pr=s.avgProfitPerHand; id('st-prof').textContent=(pr>=0?'+':'')+pr.toFixed(1); id('st-prof').style.color=pr>=0?'#00E676':'#f87171';
+    cStat('st-vpip',s.vpip,.15,.35); cStat('st-pfr',s.pfr,.10,.25); cStat('st-wtsd',s.wtsdPct,.20,.40); cStat('st-wsd',s.wonAtSdPct,.45,1,false);
+    const list=id('sug-list'), none=id('no-sug'); list.innerHTML='';
     if (!p.suggestions?.length) { none.classList.remove('hidden'); return; }
     none.classList.add('hidden');
     p.suggestions.forEach(sg => {
-      const sc = sg.severity==='CRITICAL' ? '7f1d1d;color:#f87171' : sg.severity==='WARNING' ? '78350f;color:#fde68a' : '1e3a5f;color:#93c5fd';
-      const ic = sg.severity==='CRITICAL' ? '🚨' : sg.severity==='WARNING' ? '⚠️' : 'ℹ️';
-      const d = document.createElement('div');
-      d.style.cssText = `border:1px solid #${sc.split(';')[0]};background:#0a1628;border-radius:14px;padding:16px`;
-      d.innerHTML = `<div class="flex gap-3"><span class="shrink-0 mt-0.5" style="font-size:1.2rem">${ic}</span><div>
-        <div style="font-size:.7rem;color:#64748b;margin-bottom:2px">${esc(sg.category)}</div>
-        <div style="font-weight:600;font-size:.875rem;margin-bottom:4px">${esc(sg.title)}</div>
-        <div style="font-size:.875rem;color:#94a3b8;line-height:1.5">${esc(sg.detail)}</div>
-      </div></div>`;
+      const sc=sg.severity==='CRITICAL'?'7f1d1d;color:#f87171':sg.severity==='WARNING'?'78350f;color:#fde68a':'1e3a5f;color:#93c5fd';
+      const ic=sg.severity==='CRITICAL'?'🚨':sg.severity==='WARNING'?'⚠️':'ℹ️';
+      const d=document.createElement('div'); d.style.cssText=`border:1px solid #${sc.split(';')[0]};background:#0a1628;border-radius:14px;padding:16px`;
+      d.innerHTML=`<div class="flex gap-3"><span class="shrink-0 mt-0.5" style="font-size:1.2rem">${ic}</span><div><div style="font-size:.7rem;color:#64748b;margin-bottom:2px">${esc(sg.category)}</div><div style="font-weight:600;font-size:.875rem;margin-bottom:4px">${esc(sg.title)}</div><div style="font-size:.875rem;color:#94a3b8;line-height:1.5">${esc(sg.detail)}</div></div></div>`;
       list.appendChild(d);
     });
-  } catch (e) { console.error('load profile', e); }
+  } catch (e) { console.error('load profile',e); }
 }
-function navProfile(pid) { location.hash = '#profile/' + pid; }
-function cStat(eid, v, lo, hi, moreGood=true) {
-  const el = id(eid); if (!el) return;
-  const inRange = v >= lo && v <= hi;
-  el.style.color = inRange ? '#00E676' : (moreGood&&v<lo)||(!moreGood&&v>hi) ? '#f87171' : '#facc15';
+function navProfile(pid) { location.hash='#profile/'+pid; }
+function cStat(eid,v,lo,hi,moreGood=true) {
+  const el=id(eid); if(!el) return;
+  el.style.color = (v>=lo&&v<=hi) ? '#00E676' : (moreGood&&v<lo)||(!moreGood&&v>hi) ? '#f87171' : '#facc15';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CHALLENGES
+// CHALLENGES — SETS
 // ─────────────────────────────────────────────────────────────────────────────
 async function loadChallenges() {
   showView('challenges'); clearInterval(app.lobbyTimer);
   try {
-    app.challengeList = await api('GET', '/challenges');
-    const grid = id('chal-grid'); grid.innerHTML = '';
-    app.challengeList.forEach((c, i) => {
-      const dc = c.difficulty === 'BEGINNER' ? '#14532d;color:#00E676' : c.difficulty === 'INTERMEDIATE' ? '#78350f;color:#fde68a' : '#7f1d1d;color:#f87171';
+    const sets = await api('GET','/challenges/sets');
+    const grid = id('chal-grid'); grid.innerHTML='';
+    sets.forEach(s => {
+      const dc = s.difficulty==='BEGINNER' ? '#14532d;color:#00E676' : s.difficulty==='INTERMEDIATE' ? '#78350f;color:#fde68a' : s.difficulty==='ADVANCED' ? '#7f1d1d;color:#f87171' : '#1e3a5f;color:#93c5fd';
       const div = document.createElement('div');
-      div.className = 'challenge-card rounded-2xl border border-gray-800 p-4 cursor-pointer select-none';
-      div.style.background = '#0a1628';
-      div.innerHTML = `<div class="flex items-start justify-between mb-2">
-        <span class="font-semibold text-sm">${esc(c.title)}</span>
-        <span class="text-xs px-2 py-0.5 rounded-full shrink-0 ml-2" style="background:#${dc}">${c.difficulty}</span>
-      </div>
-      <div class="flex gap-2 text-xs mb-2">
-        <span class="rounded px-1.5 py-0.5" style="background:#071428;color:#38bdf8;border:1px solid #1e3a5f">${c.position}</span>
-        <span class="rounded px-1.5 py-0.5" style="background:#071428;color:#94a3b8;border:1px solid #1e3a5f">${c.street}</span>
-      </div>
-      <p class="text-xs text-gray-500 line-clamp-2">${esc(c.description.substring(0,80))}…</p>`;
-      div.onclick = () => { app.currentChallengeIndex = i; location.hash = '#challenge/' + c.id; };
+      div.className='hover-lift rounded-2xl border border-gray-800 p-4 cursor-pointer select-none';
+      div.style.background='#0a1628';
+      div.innerHTML=`<div class="flex items-start justify-between mb-2">
+        <span class="text-3xl mr-2">${s.icon}</span>
+        <span class="text-xs px-2 py-0.5 rounded-full shrink-0" style="background:#${dc}">${s.difficulty}</span></div>
+        <div class="font-semibold text-sm mb-1">${esc(s.title)}</div>
+        <div class="text-xs text-gray-500 mb-2">${s.count} questions</div>
+        <p class="text-xs text-gray-500 leading-relaxed">${esc(s.description)}</p>`;
+      div.onclick = () => { location.hash='#challenge-set/'+s.id; };
       grid.appendChild(div);
     });
-  } catch (e) { console.error('load challenges', e); }
+  } catch (e) { console.error('load challenges',e); }
 }
-function navChallenges() { location.hash = '#challenges'; }
+function navChallenges() { location.hash='#challenges'; }
+function navTutorial()   { location.hash='#tutorial'; }
 
-async function loadChallenge(cid) {
-  showView('challenge'); clearInterval(app.lobbyTimer); app.currentChallengeId = cid;
-  // Reset result
-  id('ch-result').classList.add('hidden'); id('ch-next').classList.add('hidden');
-  const opts = id('ch-opts'); opts.innerHTML = '';
+async function loadChallengeSet(setId) {
+  showView('challenge-set'); clearInterval(app.lobbyTimer);
+  app.currentSetId=setId; app.currentSetIndex=0; app.setResults=[];
+  id('cs-score').classList.add('hidden'); id('cs-question').classList.remove('hidden');
   try {
-    const c = await api('GET', '/challenges/' + cid);
-    id('ch-title').textContent = c.title;
-    id('ch-pos').textContent   = c.position;
-    id('ch-street').textContent = c.street;
-    id('ch-pot').textContent   = '💰 ' + c.potChips;
-    if (c.callAmount > 0) { id('ch-call').textContent = c.callAmount + ' chips'; id('ch-call-wrap').classList.remove('hidden'); }
-    else id('ch-call-wrap').classList.add('hidden');
-    id('ch-stack').textContent = c.effectiveStack + ' chips';
-    id('ch-desc').textContent  = c.description;
-
-    // Board
-    const board = id('ch-board'); board.innerHTML = '';
-    if (c.board?.length) c.board.forEach(card => { board.innerHTML += cardHtml(card); });
-    else board.innerHTML = '<span style="color:rgba(255,255,255,.3);font-size:.75rem">No board cards (preflop)</span>';
-
-    // Hole cards
-    const hole = id('ch-hole'); hole.innerHTML = c.holeCards.map(cardHtml).join('');
-
-    // Options
-    const labels = ['A','B','C','D'];
-    c.options.forEach((opt, i) => {
-      const btn = document.createElement('button');
-      btn.className = 'btn w-full rounded-xl py-3 px-4 text-sm font-medium text-left flex items-center gap-3 border border-gray-700';
-      btn.style.background = '#0a1628'; btn.style.color = '#e2e8f0';
-      btn.innerHTML = `<span class="shrink-0 w-6 h-6 flex items-center justify-center rounded-full border border-gray-600 text-xs font-bold">${labels[i]}</span><span>${esc(opt)}</span>`;
-      btn.onclick = () => submitChallengeAnswer(i, btn);
-      opts.appendChild(btn);
-    });
-  } catch (e) { console.error('load challenge', e); }
+    const s = await api('GET','/challenges/sets/'+setId);
+    app.currentSetChallenges = s.challenges;
+    id('cs-set-title').textContent = s.title;
+    showSetQuestion(0);
+  } catch (e) { console.error('load set',e); }
 }
 
-async function submitChallengeAnswer(chosen, clickedBtn) {
-  // Disable all buttons
-  const btns = id('ch-opts').querySelectorAll('button');
-  btns.forEach(b => b.disabled = true);
+function showSetQuestion(idx) {
+  const total = app.currentSetChallenges.length;
+  id('cs-progress').textContent = `${idx+1} / ${total}`;
+  id('cs-bar').style.width = (idx/total*100)+'%';
+  id('cs-result').classList.add('hidden');
+  id('cs-next-btn').classList.add('hidden');
+
+  const c = app.currentSetChallenges[idx];
+  id('cs-pos').textContent = c.position;
+  id('cs-street').textContent = c.street;
+  id('cs-pot').textContent = '💰 '+c.potChips;
+  if (c.callAmount>0) { id('cs-call').textContent=c.callAmount+' chips'; id('cs-call-wrap').classList.remove('hidden'); }
+  else id('cs-call-wrap').classList.add('hidden');
+  id('cs-stack').textContent = c.effectiveStack+' chips';
+  id('cs-desc').textContent = c.description;
+
+  const board=id('cs-board'); board.innerHTML='';
+  if (c.board?.length) c.board.forEach(card => { board.innerHTML+=cardHtml(card); });
+  else board.innerHTML='<span style="color:rgba(255,255,255,.3);font-size:.75rem">Preflop — no board</span>';
+  id('cs-hole').innerHTML = c.holeCards.map(cardHtml).join('');
+
+  const opts=id('cs-opts'); opts.innerHTML='';
+  const labels=['A','B','C','D'];
+  c.options.forEach((opt,i) => {
+    const btn=document.createElement('button');
+    btn.className='w-full rounded-xl py-3 px-4 text-sm font-medium text-left flex items-center gap-3 border border-gray-700 transition-all';
+    btn.style.background='#0a1628'; btn.style.color='#e2e8f0';
+    btn.innerHTML=`<span class="shrink-0 w-6 h-6 flex items-center justify-center rounded-full border border-gray-600 text-xs font-bold">${labels[i]}</span><span>${esc(opt)}</span>`;
+    btn.onclick = () => submitSetAnswer(i, c);
+    opts.appendChild(btn);
+  });
+}
+
+async function submitSetAnswer(chosen, challenge) {
+  const btns = id('cs-opts').querySelectorAll('button');
+  btns.forEach(b => b.disabled=true);
   try {
-    const r = await api('POST', '/challenges/' + app.currentChallengeId + '/answer', { chosenIndex: chosen });
-    // Colour correct/incorrect
-    btns.forEach((b, i) => {
-      if (i === r.correctIndex) { b.style.background = '#052e16'; b.style.borderColor = '#00C853'; b.style.color = '#00E676'; }
-      else if (i === chosen && !r.correct) { b.style.background = '#1c0000'; b.style.borderColor = '#dc2626'; b.style.color = '#f87171'; }
+    const r = await api('POST','/challenges/'+challenge.id+'/answer',{ chosenIndex:chosen });
+    // Record result
+    app.setResults.push({
+      title: challenge.title, difficulty: challenge.difficulty,
+      chosenIndex: chosen, correctIndex: r.correctIndex,
+      correct: r.correct,
+      chosenOption: challenge.options[chosen], correctOption: r.correctOption,
     });
-    const res = id('ch-result');
-    id('ch-verdict').textContent = r.correct ? '✓ Correct!' : '✗ Incorrect';
-    id('ch-verdict').style.color = r.correct ? '#00E676' : '#f87171';
-    id('ch-correct-lbl').textContent = r.correct ? 'Great read!' : `Correct answer: ${r.correctOption}`;
-    id('ch-correct-lbl').style.color = r.correct ? '#00E676' : '#fde68a';
-    id('ch-explain').textContent = r.explanation;
-    res.style.cssText = `border:1px solid ${r.correct?'#00C853':'#dc2626'};background:#0a1628;border-radius:14px;padding:20px`;
+    // Color buttons
+    btns.forEach((b,i) => {
+      if (i===r.correctIndex) { b.style.background='#052e16'; b.style.borderColor='#00C853'; b.style.color='#00E676'; }
+      else if (i===chosen && !r.correct) { b.style.background='#1c0000'; b.style.borderColor='#dc2626'; b.style.color='#f87171'; }
+    });
+    // Show result
+    const res=id('cs-result');
+    id('cs-verdict').textContent=r.correct?'✓ Correct!':'✗ Incorrect';
+    id('cs-verdict').style.color=r.correct?'#00E676':'#f87171';
+    id('cs-correct-lbl').textContent=r.correct?'Great read!':'Correct answer: '+r.correctOption;
+    id('cs-correct-lbl').style.color=r.correct?'#00E676':'#fde68a';
+    id('cs-explain').textContent=r.explanation;
+    res.style.cssText=`border:1px solid ${r.correct?'#00C853':'#dc2626'};background:#0a1628;border-radius:14px;padding:20px`;
     res.classList.remove('hidden');
     if (r.keyPoints?.length) {
-      id('ch-kp-wrap').classList.remove('hidden');
-      id('ch-kp').innerHTML = r.keyPoints.map(p => `<li class="flex gap-2 text-sm" style="color:#94a3b8;line-height:1.5"><span style="color:#7C3AED;flex-shrink:0">•</span><span>${esc(p)}</span></li>`).join('');
-    }
-    // Show next button if there's a next challenge
-    if (app.challengeList.length > app.currentChallengeIndex + 1) id('ch-next').classList.remove('hidden');
-  } catch (e) { console.error('submit answer', e); }
+      id('cs-kp-wrap').classList.remove('hidden');
+      id('cs-kp').innerHTML=r.keyPoints.map(p=>`<li class="flex gap-2 text-sm" style="color:#94a3b8;line-height:1.5"><span style="color:#7C3AED;flex-shrink:0">•</span><span>${esc(p)}</span></li>`).join('');
+    } else id('cs-kp-wrap').classList.add('hidden');
+
+    const btn=id('cs-next-btn'); btn.classList.remove('hidden');
+    const isLast = app.currentSetIndex >= app.currentSetChallenges.length-1;
+    btn.textContent = isLast ? 'See Results →' : 'Next Question →';
+  } catch (e) { console.error('submit answer',e); }
 }
 
-function nextChallenge() {
-  app.currentChallengeIndex++;
-  const next = app.challengeList[app.currentChallengeIndex];
-  if (next) location.hash = '#challenge/' + next.id;
+function nextInSet() {
+  app.currentSetIndex++;
+  if (app.currentSetIndex >= app.currentSetChallenges.length) { showScore(); return; }
+  showSetQuestion(app.currentSetIndex);
+}
+
+function showScore() {
+  id('cs-question').classList.add('hidden'); id('cs-score').classList.remove('hidden');
+  const total=app.setResults.length, correct=app.setResults.filter(r=>r.correct).length;
+  const pct2=Math.round(correct/total*100);
+  const stars = pct2===100?'⭐⭐⭐':pct2>=80?'⭐⭐':pct2>=60?'⭐':'';
+  id('score-stars').textContent=stars;
+  id('score-val').textContent=`${correct} / ${total}`;
+  id('score-lbl').textContent=pct2>=80?'Excellent work!':pct2>=60?'Good progress!':'Keep practicing!';
+  id('cs-bar').style.width='100%';
+  id('cs-progress').textContent=`${total} / ${total}`;
+
+  // Per-question review
+  id('score-review').innerHTML=app.setResults.map(r=>`
+    <div class="flex items-center gap-2 text-xs">
+      <span style="color:${r.correct?'#00E676':'#f87171'};font-size:16px">${r.correct?'✓':'✗'}</span>
+      <span class="text-gray-300 flex-1 truncate">${esc(r.title)}</span>
+      ${!r.correct?`<span class="text-gray-500 shrink-0 truncate" style="max-width:120px">→ ${esc(r.correctOption)}</span>`:''}
+    </div>`).join('');
+
+  // Tendency analysis
+  const { tendencies, improvements, recommendedSet } = analyseResults(app.setResults);
+  const tendDiv=id('score-tendencies'); tendDiv.innerHTML='';
+  if (tendencies.length) {
+    tendencies.forEach(t => {
+      const d=document.createElement('div');
+      d.className='flex items-center gap-2 text-sm'; d.style.color='#f87171';
+      d.innerHTML=`<span>📉</span><span>${esc(t)}</span>`;
+      tendDiv.appendChild(d);
+    });
+  } else {
+    tendDiv.innerHTML='<div class="text-sm" style="color:#00E676">✓ Solid fundamentals — well-balanced decisions</div>';
+  }
+  id('score-improvements').innerHTML=improvements.map(i=>`<li class="flex gap-2 text-sm text-gray-300"><span style="color:#facc15;flex-shrink:0">•</span><span>${esc(i)}</span></li>`).join('');
+  id('score-rec').textContent = recommendedSet ? '→ Recommended next: '+recommendedSet : '';
+}
+
+function analyseResults(results) {
+  const wrong = results.filter(r => !r.correct);
+  if (!wrong.length) return { tendencies:[], improvements:['Keep it up — study the key points to reinforce your thinking'], recommendedSet:null };
+
+  let tooTight=0, tooLoose=0, tooPassive=0, overAggressive=0;
+  wrong.forEach(r => {
+    const chosen = (r.chosenOption||'').toLowerCase();
+    const correct = (r.correctOption||'').toLowerCase();
+    if (/fold/.test(chosen) && /call|raise|bet/.test(correct)) tooTight++;
+    if (/call/.test(chosen) && /fold/.test(correct)) tooLoose++;
+    if (/check/.test(chosen) && /bet|raise/.test(correct)) tooPassive++;
+    if (/raise|bet/.test(chosen) && /fold|check/.test(correct)) overAggressive++;
+  });
+
+  const tendencies=[], improvements=[];
+  if (tooTight>=2) { tendencies.push('Too Tight — folded '+tooTight+' spot'+(tooTight>1?'s':'')+' where calling was correct'); improvements.push('Review pot odds: when equity > pot odds, calling is always profitable long-term'); }
+  if (tooLoose>=2) { tendencies.push('Too Loose — called '+tooLoose+' spot'+(tooLoose>1?'s':'')+' where folding was correct'); improvements.push('Check pot odds before calling: you need equity ≥ call/(pot+call)'); }
+  if (tooPassive>=2) { tendencies.push('Too Passive — checked '+tooPassive+' spot'+(tooPassive>1?'s':'')+' where betting extracted value'); improvements.push('In position with top pair or better, default to betting for thin value'); }
+  if (overAggressive>=2) { tendencies.push('Over-Aggressive — bluffed or raised '+overAggressive+' spot'+(overAggressive>1?'s':'')+' without the equity to support it'); improvements.push('Only bet/raise when you have equity advantage or strong fold equity'); }
+  if (!improvements.length) improvements.push('Close calls across the board — focus on marginal spots where your decision was near the threshold');
+
+  const recMap = { 'Too Tight':'Pot Odds & Math', 'Too Passive':'Postflop Value Betting', 'Too Loose':'Bluffing & Bluff Catching', 'Over-Aggressive':'Bluffing & Bluff Catching' };
+  const recommendedSet = tendencies.length ? recMap[tendencies[0].split(' — ')[0]] : null;
+  return { tendencies, improvements, recommendedSet };
+}
+
+function replaySet() { loadChallengeSet(app.currentSetId); }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TUTORIAL
+// ─────────────────────────────────────────────────────────────────────────────
+function loadTutorial() {
+  showView('tutorial'); clearInterval(app.lobbyTimer);
+  // Populate example cards in tutorial
+  const flop=id('tut-flop-cards'); if(flop) flop.innerHTML=[['As',''],['Kh',''],['Qd','']].map(([c])=>cardHtml(c)).join('');
+  const turn=id('tut-turn-cards'); if(turn) turn.innerHTML=[['As',''],['Kh',''],['Qd',''],['Jc','']].map(([c])=>cardHtml(c)).join('');
+  const river=id('tut-river-cards'); if(river) river.innerHTML=[['As',''],['Kh',''],['Qd',''],['Jc',''],['2s','']].map(([c])=>cardHtml(c)).join('');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
