@@ -225,6 +225,12 @@
       <div id="t-conn" class="text-xs text-gray-600 shrink-0"></div>
     </div>
 
+    <!-- Auto-next-hand countdown -->
+    <div id="next-hand-banner" class="hidden w-full max-w-2xl rounded-xl border border-gray-700 px-4 py-3 flex items-center justify-between" style="background:#071428">
+      <span id="next-hand-countdown" class="text-sm text-gray-300"></span>
+      <button onclick="cancelNextHand()" class="text-xs text-gray-500 hover:text-white transition-colors">Cancel</button>
+    </div>
+
     <!-- Action panel -->
     <div id="action-panel" class="hidden w-full max-w-2xl rounded-2xl border p-4" style="background:#0a1628;border-color:#00C853;box-shadow:0 0 20px rgba(0,200,83,.12)">
       <div class="text-xs font-bold mb-3 uppercase tracking-wider" style="color:#00E676">▶ Your Turn</div>
@@ -234,8 +240,7 @@
         <button id="btn-call"  onclick="act('CALL',0)"  class="hidden rounded-full px-4 py-2 text-sm font-medium" style="background:#1e3a8a;color:#93c5fd">Call</button>
         <div class="flex items-center gap-1.5">
           <input id="bet-amt" type="number" min="1" placeholder="Chips" class="inp" style="width:90px">
-          <button onclick="act('BET',  +id('bet-amt').value||0)" class="rounded-full px-3 py-2 text-sm font-medium" style="background:#78350f;color:#fde68a">Bet</button>
-          <button onclick="act('RAISE',+id('bet-amt').value||0)" class="rounded-full px-3 py-2 text-sm font-medium" style="background:#7c2d12;color:#fdba74">Raise</button>
+          <button id="btn-bet-raise" onclick="doBetOrRaise()" class="rounded-full px-4 py-2 text-sm font-medium" style="background:#ca8a04;color:#000">Bet</button>
         </div>
         <button onclick="act('ALL_IN',myStack())" class="rounded-full px-4 py-2 text-sm font-medium" style="background:#4c1d95;color:#c4b5fd">All-In</button>
       </div>
@@ -669,7 +674,7 @@ function loadLobby() {
   clearInterval(app.lobbyTimer);
   fetchTables(); app.lobbyTimer = setInterval(fetchTables, 10000);
 }
-function goLobby() { disconnectStomp(); clearTimeout(app.feedTimer); clearInterval(app.lobbyTimer); location.hash = '#lobby'; }
+function goLobby() { disconnectStomp(); clearTimeout(app.feedTimer); clearInterval(app.lobbyTimer); cancelNextHand(); location.hash = '#lobby'; }
 async function fetchTables() {
   try { const q = app.filter !== 'all' ? '?status='+app.filter : ''; renderTables(await api('GET','/tables'+q)); } catch {}
 }
@@ -713,6 +718,7 @@ async function createTable() {
 // ─────────────────────────────────────────────────────────────────────────────
 async function loadTable(tid) {
   showView('table'); clearInterval(app.lobbyTimer);
+  cancelNextHand();
 
   // FIX: Connect STOMP first to avoid missing events during REST fetch
   disconnectStomp();
@@ -744,6 +750,8 @@ async function loadTable(tid) {
         handId:h.handId, street:h.street, potChips:h.potChips, boardCards:h.boardCards||[],
         dealerSeat:h.dealerSeat, sbSeat:h.sbSeat, bbSeat:h.bbSeat,
         myHoleCards:h.myHoleCards||[], tableStatus:'IN_HAND',
+        currentBet:h.currentBet,
+        minRaise:h.minRaise,
       });
       renderMyCards(); renderBoard(app.boardCards, h.street);
       id('t-pot').textContent = '💰 '+h.potChips;
@@ -862,6 +870,7 @@ function handleEvent(ev) {
     renderMyCards(); renderBoard([],'');
     app.tableStatus = 'WAITING';
     setTimeout(updateCtrlBtns, 200);
+    scheduleNextHand();
   }
 
   // Action log — update from lastAction field
@@ -878,10 +887,11 @@ function showActionPanel(next) {
   id('action-panel').classList.toggle('hidden', !myTurn);
   if (myTurn) {
     id('act-err').classList.add('hidden');
-    id('bet-amt').value = Math.max(app.bigBlind*2, Math.round(app.potChips*0.6));
+    id('bet-amt').value = Math.max(app.minRaise || app.bigBlind*2, Math.round(app.potChips*0.6));
     const hasBet = (app.currentBet ?? 0) > 0;
     id('btn-check').classList.toggle('hidden', hasBet);
     id('btn-call').classList.toggle('hidden', !hasBet);
+    id('btn-bet-raise').textContent = hasBet ? 'Raise' : 'Bet';
   }
 }
 
@@ -919,7 +929,8 @@ async function startHand() {
       handId:h.handId, street:h.street, potChips:h.potChips,
       dealerSeat:h.dealerSeat, sbSeat:h.sbSeat, bbSeat:h.bbSeat,
       myHoleCards:h.myHoleCards||[], boardCards:h.boardCards||[], tableStatus:'IN_HAND',
-      currentBet:app.bigBlind, // preflop: everyone must match BB
+      currentBet:h.currentBet,
+      minRaise:h.minRaise,
     });
     renderMyCards(); renderBoard(app.boardCards, h.street);
     id('t-pot').textContent    = '💰 '+h.potChips;
@@ -947,18 +958,19 @@ async function act(type, amount) {
     const r = await api('POST','/hands/'+app.handId+'/actions', { actionType:type, amount });
     app.street=r.street; app.potChips=r.potChips; app.nextActionSeat=r.nextSeat;
     app.liveSeats=r.seats||[]; app.boardCards=r.boardCards||app.boardCards;
-    app.currentBet=r.nextSeat<1 ? 0 : app.currentBet; // reset if hand over
+    app.currentBet = r.nextSeat < 1 ? 0 : r.currentBet;
+    app.minRaise   = r.minRaise ?? app.bigBlind;
 
     id('t-pot').textContent    = r.potChips ? '💰 '+r.potChips : '';
     id('t-street').textContent = r.street||'';
     renderSeats(app.tableSeats, r.seats, r.nextSeat); renderBoard(app.boardCards, r.street);
     showActionPanel(r.nextSeat);
 
-    // FIX: Let STOMP handle hand-end; just clear local visual state
     if (r.nextSeat === -1) {
       app.handId=null; app.myHoleCards=[];
       renderMyCards(); renderBoard([],'');
       addActionLog('Hand over', -1);
+      scheduleNextHand();
     }
     if (r.feedback) showFeedback(r.feedback);
   } catch (e) { err.textContent=e.data?.message||'Action failed'; err.classList.remove('hidden'); }
@@ -966,6 +978,41 @@ async function act(type, amount) {
 function myStack() {
   const s = app.liveSeats.length ? app.liveSeats.find(s=>s.seatNo===app.mySeatNo) : app.tableSeats.find(s=>s.seatNo===app.mySeatNo);
   return s?.stackChips ?? 0;
+}
+
+// FIX: getBetAmt and doBetOrRaise must be function declarations (not const)
+// so they attach to window and are accessible from inline onclick handlers.
+function getBetAmt() {
+  return +document.getElementById('bet-amt').value || 0;
+}
+function doBetOrRaise() {
+  const hasBet = (app.currentBet ?? 0) > 0;
+  act(hasBet ? 'RAISE' : 'BET', getBetAmt());
+}
+
+// ── AUTO NEXT HAND ───────────────────────────────────────────────────────────
+let nextHandTimer = null;
+function scheduleNextHand() {
+  if (nextHandTimer) { clearInterval(nextHandTimer); nextHandTimer = null; }
+  const seated = (app.tableSeats||[]).filter(s => s.playerId).length;
+  if (app.mySeatNo < 1 || seated < 2) return;
+  let secs = 3;
+  id('next-hand-countdown').textContent = `Next hand in ${secs}s…`;
+  id('next-hand-banner').classList.remove('hidden');
+  nextHandTimer = setInterval(() => {
+    secs--;
+    if (secs <= 0) {
+      clearInterval(nextHandTimer); nextHandTimer = null;
+      id('next-hand-banner').classList.add('hidden');
+      startHand();
+    } else {
+      id('next-hand-countdown').textContent = `Next hand in ${secs}s…`;
+    }
+  }, 1000);
+}
+function cancelNextHand() {
+  if (nextHandTimer) { clearInterval(nextHandTimer); nextHandTimer = null; }
+  id('next-hand-banner').classList.add('hidden');
 }
 
 // ── FEEDBACK ─────────────────────────────────────────────────────────────────

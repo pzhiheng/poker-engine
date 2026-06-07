@@ -226,7 +226,8 @@ public class HandService {
             new HandActionEvent(tableId, hand.getId(), actionSeatNo, payload));
 
         return buildHandResponse(hand, table, seatStates, dealerSeatNo, sbSeatNo, bbSeatNo,
-                                 payload.board(), requestingPlayerId);
+                                 payload.board(), requestingPlayerId,
+                                 payload.currentBet(), payload.minRaise());
     }
 
     // ── Record action ─────────────────────────────────────────────────────────
@@ -381,6 +382,8 @@ public class HandService {
             handId, nextVersion, newStreet, newPot, nextActionSeat,
             after.board(),
             buildSeatViews(updatedSeats, requestingPlayerId),
+            resetBet,
+            resetMinRaise,
             feedback
         );
     }
@@ -608,7 +611,8 @@ public class HandService {
                                             List<SeatState> seatStates,
                                             int dealerSeat, int sbSeat, int bbSeat,
                                             List<String> boardCards,
-                                            UUID requestingPlayerId) {
+                                            UUID requestingPlayerId,
+                                            int currentBet, int minRaise) {
         List<String> myHoleCards = null;
         List<HandResponse.SeatView> seats = new ArrayList<>();
 
@@ -624,7 +628,8 @@ public class HandService {
         }
 
         return new HandResponse(hand.getId(), table.getId(), hand.getStreet().name(),
-            hand.getPotChips(), dealerSeat, sbSeat, bbSeat, boardCards, myHoleCards, seats);
+            hand.getPotChips(), dealerSeat, sbSeat, bbSeat, boardCards, myHoleCards, seats,
+            currentBet, minRaise);
     }
 
     /**
@@ -651,6 +656,7 @@ public class HandService {
             payload.seats(),
             payload.dealerSeat(), payload.sbSeat(), payload.bbSeat(),
             payload.board(),
-            requestingPlayerId);
+            requestingPlayerId,
+            payload.currentBet(), payload.minRaise());
     }
 }

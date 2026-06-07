@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Response returned by {@code POST /tables/{id}/hands}.
+ * Response returned by {@code POST /tables/{id}/hands} and {@code GET /tables/{id}/hand}.
  *
  * <p>The requesting player's hole cards are visible in {@code myHoleCards}.
  * Inside {@code seats}, opponent hole cards are masked as {@code ["**","**"]}
@@ -20,7 +20,9 @@ public record HandResponse(
         int          bbSeat,
         List<String> boardCards,    // 0 (preflop), 3 (flop), 4 (turn), or 5 (river) cards
         List<String> myHoleCards,   // null if requesting player is not seated
-        List<SeatView> seats
+        List<SeatView> seats,
+        int          currentBet,    // bet size all active players must match (BB on preflop start)
+        int          minRaise       // minimum legal raise increment
 ) {
 
     /**

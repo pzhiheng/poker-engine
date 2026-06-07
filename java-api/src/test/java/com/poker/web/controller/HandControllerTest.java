@@ -71,7 +71,7 @@ class HandControllerTest {
 
         HandResponse resp = new HandResponse(
             handId, tableId, "PREFLOP", 15, 1, 1, 2,
-            List.of(), List.of("Ah", "Kh"), List.of(seatA, seatB));
+            List.of(), List.of("Ah", "Kh"), List.of(seatA, seatB), 10, 10);
 
         when(handService.startHand(eq(tableId), any(UUID.class))).thenReturn(resp);
 
@@ -165,7 +165,7 @@ class HandControllerTest {
             2, UUID.randomUUID(), "bob", 480, List.of("**", "**"), false, false);
 
         ActionResponse resp = new ActionResponse(
-            handId, 2, "PREFLOP", 30, 2, List.of(), List.of(seatA, seatB), feedback);
+            handId, 2, "PREFLOP", 30, 2, List.of(), List.of(seatA, seatB), 10, 10, feedback);
 
         when(handService.recordAction(eq(handId), any(UUID.class), any()))
             .thenReturn(resp);
